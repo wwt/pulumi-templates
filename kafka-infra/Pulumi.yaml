@@ -1,0 +1,32 @@
+name: ${PROJECT}
+runtime: nodejs
+description: ${DESCRIPTION}
+template:
+  description: A Pulumi program for Kafka on EKS
+  config:
+    aws:region:
+      description: The AWS region to deploy into
+      default: us-west-2
+    deployDashboard:
+      description: Deploy the kubernetes dashboard to EKS? (Deprecated, leave false)
+      default: false
+    desiredCapacity:
+      description: The desired number of worker nodes
+      default: 10
+    instanceType:
+      description: The type of EC2 instance for your worker nodes
+      default: r5.xlarge
+    maxSize:
+      description: The max number of woker nodes
+      default: 10
+    minSize:
+      description: The minimum number of worker nodes
+      default: 10
+    numOfAvailZones:
+      description: The number of availability zones for the VPC
+      default: 3
+    ownerTag:
+      description: Owner tag to be applied to all created resources. Should be your name or team name
+    vpcName:
+      description: Name for the vpc
+      default: kafka-vpc

@@ -1,0 +1,42 @@
+name: ${PROJECT}
+runtime: nodejs
+description: ${DESCRIPTION}
+template:
+  description: A Pulumi program to deploy the Confluent Operator and its components to EKS
+  config:
+    aws:region:
+      description: The AWS region to deploy into
+      default: us-west-2
+    enableConnect:
+      description: Enable the connect component
+      default: false
+    enableControlCenter:
+      description: Enable the control center component
+      default: false
+    enableKafka:
+      description: Enable the broker component
+      default: false
+    enableKsql:
+      description: Enable the ksql component
+      default: false
+    enableOperator:
+      description: Enable the operator component
+      default: true
+    enableReplicator:
+      description: Enable the replicator component
+      default: false
+    enableSchemaRegistry:
+      description: Enable the schema registry component
+      default: false
+    enableZookeeper:
+      description: Enable the zookeeper component
+      default: false
+    username:
+      description: The Pulumi username used to log in
+    infraProjectName:
+      description: The project name you used when creating the infra project
+      default: kafka-infra
+    confluentLicenseKey:
+      description: The confluent license key to be used by the operator and the control center
+      secret: true
+
