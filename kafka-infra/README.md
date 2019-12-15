@@ -20,14 +20,14 @@ A Pulumi program template that deploys the necessary infrastructure for Kafka on
 2. Create a new project:
 
    ```sh
-   pulumi new https://github.com/wwt/kafka-infra
+   pulumi new https://github.com/wwt/pulumi-templates/kafka-infra
    ```
 
 3. Fill out the prompts appropriately.
 
 4. Run `pulumi up` to preview and deploy the changes.
 
-5. See [https://github.com/wwt/kafka-services](https://github.com/wwt/kafka-services) to deploy Confluent Kafka to this infrastructure
+5. See [kafka-services](https://github.com/wwt/pulumi-templates/tree/master/kafka-services) to deploy Confluent Kafka to this infrastructure
 
    
 

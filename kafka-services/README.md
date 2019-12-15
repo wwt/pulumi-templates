@@ -1,6 +1,6 @@
 # Kafka Deployment - AWS
 
-A Pulumi program template that deploys the Confluent Operator and its components to the EKS cluster created from the [infrastructure project](https://github.com/wwt/kafka-infra).
+A Pulumi program template that deploys the Confluent Operator and its components to the EKS cluster created from the [infrastructure project](https://github.com/wwt/pulumi-templates/tree/master/kafka-infra).
 
 #### Deployed Resources:
 
@@ -26,7 +26,7 @@ A Pulumi program template that deploys the Confluent Operator and its components
 2. Create a new project:
 
    ```sh
-   pulumi new https://github.com/wwt/kafka-services
+   pulumi new https://github.com/wwt/pulumi-templates/kafka-services
    ```
 
 3. Fill out the prompts appropriately. **Note: A Confluent License key is required. Trial key is ok.**
