@@ -1,6 +1,6 @@
 # Kafka Deployment - AWS
 
-A Pulumi program template that deploys the Confluent Operator and its components to the EKS cluster created from the [infrastructure project](https://github.com/wwt/pulumi-templates/tree/master/kafka-infra).
+A Pulumi program template that deploys the Confluent Operator and its components to the EKS cluster created from the [infrastructure project](https://github.com/wwt/pulumi-templates/tree/master/aws-eks-infra).
 
 #### Deployed Resources:
 

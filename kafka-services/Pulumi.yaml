@@ -35,7 +35,7 @@ template:
       description: The Pulumi username used to log in
     infraProjectName:
       description: The project name you used when creating the infra project
-      default: kafka-infra
+      default: aws-eks-infra
     confluentLicenseKey:
       description: The confluent license key to be used by the operator and the control center
       secret: true

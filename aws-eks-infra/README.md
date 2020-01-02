@@ -1,6 +1,6 @@
-# Kafka Infrastructure - AWS
+# EKS Infrastructure - AWS
 
-A Pulumi program template that deploys the necessary infrastructure for Kafka on Kubernetes.
+A Pulumi program template that deploys a VPC and an EKS cluster in AWS.
 
 #### Deployed Resources:
 
@@ -14,13 +14,13 @@ A Pulumi program template that deploys the necessary infrastructure for Kafka on
 1. Create a new folder:
 
    ```sh
-   mkdir kafka-infra && cd kafka-infra
+   mkdir aws-eks-infra && cd aws-eks-infra
    ```
 
 2. Create a new project:
 
    ```sh
-   pulumi new https://github.com/wwt/pulumi-templates/kafka-infra
+   pulumi new https://github.com/wwt/pulumi-templates/aws-eks-infra
    ```
 
 3. Fill out the prompts appropriately.
