@@ -1,0 +1,16 @@
+{
+  "name": "eks-cluster",
+  "devDependencies": {
+    "@types/node": "^12.6.8",
+    "typescript": "^3.5.3"
+  },
+  "dependencies": {
+    "@pulumi/azure": "latest",
+    "@pulumi/azuread": "latest",
+    "@pulumi/kubernetes": "latest",
+    "@pulumi/pulumi": "latest",
+    "@types/utf8": "latest",
+    "crypto": "latest",
+    "utf8": "latest"
+  }
+}

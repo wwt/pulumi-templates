@@ -1,0 +1,9 @@
+config:
+  azure-stream-demo-infra:location: westus2
+  azure-stream-demo-infra:nodeCount: "10"
+  azure-stream-demo-infra:password:
+    secure: AAABADxmldWAAoMb1eToOLzJV8mQvkLjuD72D/kA9TgcVW+YE9ZpPHJWqw==
+  azure-stream-demo-infra:sshPublicKey: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCvh0EC5LVcKYI43XIq0iuANHWJerjd4CnygAyKJkMLItBQDMCFknl/sDG7ExqTkFWtQRfrxdrcev/MymuAqGQYFwLXKf5EFjH71CGg/wg0CX5bnx6effjOBjsINi0F927qG7Xry5qsAqB2Mp3efchM7cSWrwsKNKmnyztIoV0YGy0gEjgGHks1Knen6Su/HCIqvCLgGQ5Z3QfpKJeWN2Vw35NMBI2dwnHkYJjqcKfUjAgUsaOsyBV3MxcW0tAY+79DPcVXeTVIjaSG64ds7NufJoPSsogTLAG0hl7q5a0Wg0ue4mmBCZhXKK9nrAqAECv7es8t7MADRjcMBp7y1RHEGVt5jxHCidvFnuutuOo3f50BGyv5QVKu8QY51Az/Bc5lStv60zGw9NDWrxCHK1+AsoZrlGIMgv6AzqjRzxc5i5l2/wRzQEZwZyXtoTKc14gqEJ8EACSwPVWilU8pddrNpqU30VNaUIuccc7GsW/P5ZF9SuvKQ/26yvaNPbbeP4/nGKOfCO0cOmV4gjG75MWBUdH/VAxekPFPnXMgkLEoixABrLlnwPTYwz6cu5ySpY73Y+EuD6jSRLlgeDjVBDONH4qyoXIPUR8kq17AJF6T5XbDVWoMa0VFHQlEeIr5Us/JSufrGQN+BbigdUov6NoB24wXJrmSk5NVFLRwXIdh7Q==
+    brianbrifri@gmail.com
+  azure:environment: public
+  azure:location: West US 2
