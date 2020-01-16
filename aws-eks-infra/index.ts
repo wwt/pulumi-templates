@@ -19,7 +19,10 @@ const baseTags = {
 // Create a VPC for our cluster.
 const vpc = new awsx.ec2.Vpc("kafka-vpc", {
     numberOfAvailabilityZones: numberOfAvailZones,
-    tags: Object.assign(baseTags, {Name: config.require("vpcName")})
+    tags: {
+        ...baseTags,
+        Name: config.require("vpcName")
+    }
 });
 
 // Create an EKS cluster with the given configuration.
