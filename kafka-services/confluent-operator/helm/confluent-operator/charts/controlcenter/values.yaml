@@ -9,7 +9,7 @@ license: ""
 name: controlcenter
 image:
   repository: confluentinc/cp-enterprise-control-center-operator
-  tag: 5.3.1.0
+  tag: 5.4.0.0
 ## Pod resources
 ##
 resources:
@@ -35,7 +35,7 @@ terminationGracePeriodSeconds: 60
 ##
 tls:
   enabled: false
-  port: 8443
+  port: 443
   authentication:
     type: ""
   fullchain: |-
@@ -114,7 +114,7 @@ dependencies:
     # this one should be reachable from the machine where C3 is installed (use internal ksql service name with port 9088, ef http://ksql:9088)
     url: ""
     # this one should be reachable from the machine where the browser using C3 is running
-    # e.g http|s://schemaregistry.example.com:|8088|8443
+    # e.g http|s://schemaregistry.example.com:|9081|8081
     advertisedUrl: ""
     tls:
       enabled: false
@@ -124,7 +124,7 @@ dependencies:
   ## SchemaRegistry Configurations  
   schemaRegistry:
     enabled: false
-    ## e.g http|s://schemaregistry:8443|8083
+    ## e.g http|s://schemaregistry:9081|8081
     ##
     url: ""
     tls:
@@ -136,7 +136,7 @@ dependencies:
   connectCluster:
     enabled: false
     ## connect cluster endpoint
-    ## http|s://<connector-svc-name>:8083|8443
+    ## http|s://<connector-svc-name>:9081|8081
     url: ""
     tls:
       enabled: false

@@ -57,7 +57,7 @@ spec:
         value: |2
           ## endpoint configuration with TLS option
           {{- if .Values.tls.enabled }}
-          listeners=http://0.0.0.0:9088,https://0.0.0.0:{{ .Values.tls.port }}
+          listeners=http://0.0.0.0:9088,https://0.0.0.0:8088
           {{- if eq $.Values.tls.authentication.type "tls" }}
           ssl.endpoint.identification.algorithm=
           ssl.client.auth=true
@@ -190,15 +190,9 @@ spec:
 {{- end }}        
     network:
       ports:
-      {{- if $.Values.tls.enabled }}
-      - name: external
-        port: {{ .Values.tls.port }}
-        protocol: TCP
-      {{- else }}
       - name: external
         port: 8088
         protocol: TCP
-      {{- end }}
       - name: internal
         port: 9088
         protocol: TCP
@@ -223,7 +217,7 @@ spec:
           {{- if $.Values.tls.enabled }}
           port: {{ .Values.tls.port }}
           {{- else }}
-          port: 8088
+          port: 80
           {{- end }}
       {{- end }}
     {{- $_ := set $ "name" $.Values.name }}

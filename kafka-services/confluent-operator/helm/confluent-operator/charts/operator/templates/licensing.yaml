@@ -6,5 +6,7 @@ metadata:
   name: operator-licensing
 type: Opaque
 data:
+  {{- if .Values.licenseKey }}
   licenseKey: {{ .Values.licenseKey | b64enc }}
+  {{- end }}
   publicKey: {{ .Values.publicKey | b64enc }}

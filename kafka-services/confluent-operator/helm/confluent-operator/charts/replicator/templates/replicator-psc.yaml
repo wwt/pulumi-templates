@@ -68,7 +68,7 @@ spec:
           plugin.path=/usr/share/java
 
           {{- if .Values.tls.enabled }}
-          listeners=http://0.0.0.0:8083,https://0.0.0.0:{{ $.Values.tls.port }}
+          listeners=http://0.0.0.0:9083,https://0.0.0.0:8083
           {{- if eq .Values.tls.authentication.type "tls" }}
           listeners.https.ssl.client.auth=required
           {{- end }}
@@ -79,6 +79,8 @@ spec:
           listeners.https.ssl.keystore.location=/tmp/keystore.jks
           listeners.https.ssl.keystore.password=mystorepassword
           listeners.https.ssl.key.password=mystorepassword
+          {{- else }}
+          listeners=http://0.0.0.0:9083,http://0.0.0.0:8083
           {{- end }}
 
           request.timeout.ms=20000
@@ -159,14 +161,14 @@ spec:
         exec:
           command: 
           - curl
-          - http://localhost:8083
+          - http://localhost:9083
         initial_delay_seconds: 10
         timeout_seconds: 10
       {{- else }}
       readiness_probe:
         http:
           path: /
-          port: 8083
+          port: 9083
         initial_delay_seconds: 30
         timeout_seconds: 10
       {{- end }}
@@ -175,18 +177,12 @@ spec:
 {{- end }}
     network:
       ports:
-      {{- if $.Values.tls.enabled }}
+      - name: external
+        port: 8083
+        protocol: TCP
       - name: internal
-        port: 8083
+        port: 9083
         protocol: TCP
-      - name: external
-        port: {{ $.Values.tls.port }}
-        protocol: TCP
-      {{- else }}
-      - name: external
-        port: 8083
-        protocol: TCP
-      {{- end }}
       - name: jmx
         port: 7203
         protocol: TCP
@@ -208,7 +204,7 @@ spec:
           {{- if $.Values.tls.enabled }}
           port: {{ $.Values.tls.port }}
           {{- else }}
-          port: 8083
+          port: 80
           {{- end }}
       {{- end }}
     {{- $_ := set $ "name" $.Values.name }}

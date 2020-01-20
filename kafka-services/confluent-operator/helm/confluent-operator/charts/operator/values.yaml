@@ -1,7 +1,7 @@
 ## If false, operator will not be installed
 ##
 enabled: false
-## Name of Confluent Operator
+## Confluent operator name
 ##
 name: cc-operator
 ## License Key for Operator
@@ -21,7 +21,7 @@ publicKey: |-
 ##
 image:
   repository: confluentinc/cp-operator-service
-  tag: 0.176.1
+  tag: 0.275.0
   pullPolicy: Always
 ## Confluent Operator Pod Resources
 ##
@@ -39,7 +39,7 @@ terminationGracePeriodSeconds: 30
 ##
 debug: false
 ##
-## Configure Affinity,
+## Configure affinity,
 ## More information here https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 ##
 affinity: {}
@@ -66,6 +66,10 @@ tolerations: []
 ##  value: "operator"
 ##  effect: "NoSchedule"
 
-
-
-  
+metrics:
+  dataDog:
+    enabled: false
+    port: 8125
+  prometheus:
+    enabled: false
+    port: 7777

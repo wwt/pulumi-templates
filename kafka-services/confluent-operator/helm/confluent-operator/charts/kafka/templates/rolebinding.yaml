@@ -2,7 +2,11 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   {{- include "confluent-operator.labels" . }}
+  annotations:
+    helm.sh/hook: post-upgrade, post-install, post-delete
+    helm.sh/hook-delete-policy: "before-hook-creation"
   name: {{ .Values.name }}-rolebinding
+  namespace: {{ .Release.Namespace }}
 subjects:
 - kind: ServiceAccount
   name: default

@@ -6,7 +6,6 @@ metadata:
   {{- include "confluent-operator.labels" . }}
   name: {{ .Values.name }}
   namespace:  {{ .Release.Namespace }}
-  component: {{ .Values.name }}
 spec:
   strategy:
     type: Recreate

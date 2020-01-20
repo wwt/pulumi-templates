@@ -84,7 +84,7 @@ global:
   initContainer:
     image:
       repository: confluentinc/cp-init-container-operator
-      tag: 5.3.1.0
+      tag: 5.4.0.0
 
 operator:
   enabled: false

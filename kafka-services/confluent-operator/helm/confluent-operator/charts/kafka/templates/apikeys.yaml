@@ -11,5 +11,5 @@ metadata:
 type: Opaque
 data:
   apikeys.json : {{ include "kafka.sasl_users" . | b64enc }}
-  global_sasl_plain_username: {{ .Values.global.sasl.plain.username | quote | b64enc }}
-  global_sasl_plain_password: {{ .Values.global.sasl.plain.password | quote | b64enc }}
+  global_sasl_plain_username: {{ .Values.global.sasl.plain.username | b64enc }}
+  global_sasl_plain_password: {{ .Values.global.sasl.plain.password | b64enc }}

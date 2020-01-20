@@ -57,10 +57,10 @@ function validate_k8s() {
 }
 
 function validate_helm() {
-    echo "Validating if Helm and Tiller are accessible from local machine: \n"
-    helm version &> /dev/null || die "\tHelm and Tiller access: $(echo_fail) \n\tPlease refer to the Operator"\
-                                      " documentation for Helm and Tiller troubleshooting."
-    echo "\tHelm and Tiller access: $(echo_pass) \n"
+    echo "Validating if Helm is accessible from local machine: \n"
+    helm version &> /dev/null || die "\tHelm access: $(echo_fail) \n\tPlease refer to the Operator"\
+                                      " documentation for Helm troubleshooting."
+    echo "\tHelm access: $(echo_pass) \n"
 }
 
 function validate_context() {
@@ -93,6 +93,12 @@ function required_binaries() {
     check_binaries kubectl && echo_pass
     printf "\tHelm command Installation: "
     check_binaries helm && echo_pass
+    printf "\tprintf command Installation: "
+    check_binaries printf && echo_pass
+    printf "\tawk command Installation: "
+    check_binaries awk && echo_pass
+    printf "\tcut command Installation: "
+    check_binaries cut && echo_pass
 }
 
 function contains() {
@@ -152,10 +158,16 @@ function run_helm_command() {
   local script_path="$1"
   local service="$2"
   local helm_basedir=$(helm_folder_path)
+  local helm_version
+  helm_version=$(get_helm_version) || { echo ${helm_version}; exit 1; }
   if [[ ${upgrade} == "true" ]]; then
      operator=$(printf "helm --kube-context ${context} upgrade --install -f %s %s %s %s --namespace %s" "${script_path}" "${helm_args}" "${service}" "${helm_basedir}" "${namespace}")
   else
-     operator=$(printf "helm --kube-context ${context} install -f %s --name %s %s --namespace %s %s" "${script_path}" "${service}" "${helm_basedir}" "${namespace}" "${helm_args}")
+     if [[ "${helm_version}" == "v2" ]]; then
+        operator=$(printf "helm --kube-context ${context} install -f %s --name %s %s --namespace %s %s" "${script_path}" "${service}" "${helm_basedir}" "${namespace}" "${helm_args}")
+     elif [[ "${helm_version}" == "v3" ]]; then
+        operator=$(printf "helm --kube-context ${context} install -f %s %s %s --namespace %s %s" "${script_path}" "${service}" "${helm_basedir}" "${namespace}" "${helm_args}")
+     fi
   fi
   echo "$operator"
 }
@@ -170,14 +182,16 @@ function wait_for_k8s_sts() {
 function run_cp() {
 
   local helm_file_path="$1"
-  local helm_common_args="--wait --timeout 600"
-  local kubectl_cmd="kubectl --context ${context} -n ${namespace}"
-
-  kubectl --context ${context} -n ${namespace} get sa default -oyaml | grep "confluent-docker-registry"  2>&1 > /dev/null
-  if [[ $? != 0 ]]; then
-    run_cmd "${kubectl_cmd} patch serviceaccount default -p '{\"imagePullSecrets\": [{\"name\": \"confluent-docker-registry\" }]}'" ${verbose}
+  local helm_version
+  helm_version=$(get_helm_version) || { echo ${helm_version}; exit 1; }
+  local helm_common_args
+  if [[ "${helm_version}" == "v2" ]]; then
+    helm_common_args="--wait --timeout 600"
+  elif [[ "${helm_version}" == "v3" ]]; then
+    helm_common_args="--wait --timeout 600s"
   fi
-
+  local kubectl_cmd="kubectl --context ${context} -n ${namespace}"
+  
   ## Operator
   helm_args="--set operator.enabled=true ${helm_common_args}"
   run_cmd "$(run_helm_command ${helm_file_path} "${release_prefix}-operator")" ${verbose}
@@ -210,8 +224,19 @@ function run_cp() {
   wait_for_k8s_sts
 }
 
+function get_helm_version() {
+    local helm_version=$(helm version -c --short | awk '{print $NF}' | cut -f1 -d'.')
+    if [[ "${helm_version}" != "v2" && "${helm_version}" != "v3" ]]; then
+        echo "Helm is neither version v2 or v3, found version ${helm_version}"
+        return 1
+    fi
+    echo "${helm_version}"
+}
+
 function cp_delete() {
   if  [[ ! -z ${delete} ]] && [[ ${delete} = "1" ]]; then
+     local helm_version
+     helm_version=$(get_helm_version) || { echo ${helm_version}; exit 1; }
      echo "Delete CP deployment:\n"
         local array=(${release_prefix}-sr-replicator-connect-c3 ${release_prefix}-kafka ${release_prefix}-zk ${release_prefix}-operator)
         for release in "${array[@]}"; do
@@ -220,7 +245,11 @@ function cp_delete() {
                 sleep 20s
                 run_cmd "kubectl delete pod --context ${context} -l clusterId=${namespace} -n ${namespace} --force --grace-period 0" ${verbose}
               fi
-              run_cmd "helm --kube-context ${context} delete --purge ${release}" ${verbose}
+              if [[ "${helm_version}" == "v2" ]]; then
+                run_cmd "helm --kube-context ${context} delete --purge ${release}" ${verbose}
+              elif [[ "${helm_version}" == "v3" ]]; then
+                run_cmd "helm --kube-context ${context} uninstall ${release}" ${verbose}
+              fi
               sleep 10s
             else
               echo "\tValidation of Helm release [${green}$release${reset}] availability: $(echo_fail)\n"

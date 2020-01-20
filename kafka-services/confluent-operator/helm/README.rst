@@ -1,30 +1,11 @@
 Introduction
 ============
-Helm is an open-source packaging tool that helps you install applications and services on kubernetes.
-Helm uses a packaging format called charts. Charts are a collection of YAML templates that describes a related set of kubernetes resources.
+
+Helm is an open-source packaging tool that helps you install applications and services on kubernetes. Helm uses a packaging format called charts. Charts are a collection of YAML templates that describes a related set of kubernetes resources.
 
 This Helm chart deploys Confluent Operator which helps to automate tasks related to operating Kafka cluster.
 
-
-Prerequisites
-=============
-
-- Kubernetes 1.9+ cluster is up and running
-- RBAC Kubernetes support
-- Openshift 3.9+
-- Helm 2.9+
-- TLS certificates for the Kafka brokers
-- DNS name to access Kafka cluster outside kubernetes network
-- Layer 4 load balancing (LB) with pass through (TLS termination on application) support
-- Cluster-level admin access on the kubernetes
-- Dynamic volume provisioning support
-- Confluent Docker Images: Confluent Operator, Kafka, and Zookeeper
-
-
-Openshift
-=========
-For OpenShift deployment, read scripts/openshift README.md file.
-
+https://docs.confluent.io/current/installation/operator/index.html
 
 Helm Chart
 ==========
@@ -63,14 +44,6 @@ Install Confluent Operator
 ::
 
     helm install -f ./providers/aws.yaml --name operator --namespace operator --set operator.enabled=true ./confluent-operator
-
-
-If using the Confluent Docker Registry directly, patch the default service account to allow Docker registry access for the Operator:
-
-::
-
-	kubectl -n operator patch serviceaccount default -p '{"imagePullSecrets": [{"name": "confluent-docker-registry" }]}'
-
 
 =================================
 Install Zookeeper Custom Resource

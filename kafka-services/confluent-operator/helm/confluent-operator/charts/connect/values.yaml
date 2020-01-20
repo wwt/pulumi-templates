@@ -12,7 +12,7 @@ replicas: 3
 ##
 image:
   repository: confluentinc/cp-server-connect-operator
-  tag: 5.3.1.0
+  tag: 5.4.0.0
 ## Pod resources configuration
 ##
 resources:
@@ -31,7 +31,7 @@ jvmConfig:
 ## Endpoint Configuration
 tls:
  enabled: false
- port: 8443
+ port: 443
  authentication:
   type: ""
  cacerts: |-
@@ -134,7 +134,7 @@ dependencies:
   ## Schema Registry Configuration
   schemaRegistry:
     enabled: false
-    ## Example http|s://schemaregistry:8443|8083
+    ## Example http|s://schemaregistry:9081|8081
     ##
     url : ""
     tls:

@@ -11,7 +11,7 @@ name: zookeeper
 ##
 image:
   repository: confluentinc/cp-zookeeper-operator
-  tag: 5.3.1.0
+  tag: 5.4.0.0
 ## Pod resources requests and limits
 ##
 resources:

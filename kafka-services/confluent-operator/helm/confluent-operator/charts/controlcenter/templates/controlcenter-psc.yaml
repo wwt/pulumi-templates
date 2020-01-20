@@ -101,7 +101,7 @@ spec:
         value: |2
           # https configuration
           {{- if $.Values.tls.enabled }}
-          confluent.controlcenter.rest.listeners=https://0.0.0.0:{{ .Values.tls.port }},http://0.0.0.0:9021
+          confluent.controlcenter.rest.listeners=https://0.0.0.0:9021,http://0.0.0.0:8021
           {{- if eq $.Values.tls.authentication.type "tls" }}
           confluent.controlcenter.rest.ssl.client.auth=true
           {{- end }}
@@ -313,7 +313,11 @@ spec:
         exec:
           command: 
           - curl
+          {{- if $.Values.tls.enabled }}
+          - http://localhost:8021/2.0/status/app_info
+          {{ else }}
           - http://localhost:9021/2.0/status/app_info
+          {{ end }}
         initial_delay_seconds: 60
         timeout_seconds: 60
       ##
@@ -322,7 +326,11 @@ spec:
         exec:
           command:
           - curl
+          {{- if $.Values.tls.enabled }}
+          - http://localhost:8021/2.0/status/app_info
+          {{ else }}
           - http://localhost:9021/2.0/status/app_info
+          {{ end }}
         initial_delay_seconds: 60
         timeout_seconds: 60
         failure_threshold: 5
@@ -332,18 +340,14 @@ spec:
 {{- end }}
     network:
       ports:
+      - name: external
+        port: 9021
+        protocol: TCP
       {{- if $.Values.tls.enabled }}
       - name: internal
-        port: 9021
+        port: 8021
         protocol: TCP
-      - name: external
-        port: {{ $.Values.tls.port }}
-        protocol: TCP
-      {{- else }}
-      - name: external
-        port: 9021
-        protocol: TCP
-      {{- end }}
+      {{ end }}
       - name: jmx
         port: 7203
         protocol: TCP
@@ -365,7 +369,7 @@ spec:
           {{- if .Values.tls.enabled }}
           port: {{ .Values.tls.port }}
           {{- else }}
-          port: 9021
+          port: 80
           {{- end }}
         {{- if $.Values.tls.enabled }}
         ssl: true

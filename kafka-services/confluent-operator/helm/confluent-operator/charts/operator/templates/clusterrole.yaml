@@ -6,6 +6,62 @@ metadata:
   name: {{ .Values.name }}
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.confluent.com
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - operator.confluent.cloud
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - operator.confluent.cloud
+  resources:
+  - physicalstatefulclusters
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - apiextensions.k8s.io
   resources:
   - customresourcedefinitions
@@ -13,9 +69,45 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - operator.confluent.cloud
   resources:
   - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - cluster.confluent.com
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
   verbs:
   - '*'
 - apiGroups:
@@ -42,12 +134,6 @@ rules:
   - pods
   - secrets
   - services
-  verbs:
-  - '*'
-- apiGroups:
-  - policy
-  resources:
-  - poddisruptionbudgets
   verbs:
   - '*'
   {{- end }}

@@ -2,52 +2,24 @@
 
                                         The Confluent Operator
 
-The Confluent Operator interacts with kubernetes API to create statefulsets resources
+The Confluent Operator interacts with kubernetes API to create statefulsets resources. The Confluent Operator runs three
+controllers, two component specific controllers for kubernetes by providing components specific Custom Resource
+Definition (CRD) (for Kafka and Zookeeper) and one controller for creating other statefulsets resources.
 
 {{- if .Values.global.provider.registry.credential.required }}
 
-  1. Give the `default` Service Account access to pull images from {{ .Values.global.provider.registry.fqdn }}
+  - Give the `default` Service Account access to pull images from {{ .Values.global.provider.registry.fqdn }}
 
   kubectl -n {{ .Release.Namespace }} patch serviceaccount default -p '{"imagePullSecrets": [{"name": "confluent-docker-registry" }]}'
 {{- end }}
 
-  2. Validate if Confluent Operator is running.
+  1. Validate if Confluent Operator is running.
 
-  kubectl get pods -n {{ .Release.Namespace }}
+  kubectl get pods -n {{ .Release.Namespace }} | grep {{ .Values.operator.name }}
 
-  3. Validate if custom resource definition (CRD) is created.
+  2. Validate if custom resource definition (CRD) is created.
 
-  kubectl get crd -n {{ .Release.Namespace }}
-
-
-                                         The Confluent Manager
-
-The Confluent Manager brings the component (Confluent Services) specific controllers for kubernetes by providing components specific Custom Resource
-Definition (CRD). It runs two controllers Kafka/Zookeeper.
-
-  1. Validate if Confluent Manager is running.
-
-  kubectl get pods -n {{ .Release.Namespace }} | grep "manager"
-
-  2. Validate if custom resource definition (CRD) is created for Kafka/Zookeeper
-
-  kubectl get crd  -n {{ .Release.Namespace }}
-
-  3. Validate if Kafka command is available
-
-  kubectl get kafka -n {{ .Release.Namespace }}
-
-                  OR
-
-  kubectl get broker  -n {{ .Release.Namespace }}
-
-  4. Validate if Zookeeper command is available
-
-  kubectl get zookeeper -n {{ .Release.Namespace }}
-
-                  OR
-
-  kubectl get zk -n {{ .Release.Namespace }}
+  kubectl get crd | grep confluent
 
 {{- end }}
 
@@ -229,20 +201,24 @@ ControlCenter is deployed through PSC
 
       External: https://{{ $.Values.controlcenter.loadBalancer.prefix | default $.Values.controlcenter.name }}.{{ $.Values.controlcenter.loadBalancer.domain }}:{{ .Values.controlcenter.tls.port }}
       {{- else }}
-      External: http://{{ $.Values.controlcenter.loadBalancer.prefix | default $.Values.controlcenter.name }}.{{ $.Values.controlcenter.loadBalancer.domain }}:9021
+      External: http://{{ $.Values.controlcenter.loadBalancer.prefix | default $.Values.controlcenter.name }}.{{ $.Values.controlcenter.loadBalancer.domain }}:80
       {{- end }}
       {{- end }}
-      Internal: http://{{ $.Values.controlcenter.name }}:9021 (Inside Kubernetes)
       
+      {{- if .Values.controlcenter.tls.enabled }}
+      Internal: https://{{ $.Values.controlcenter.name }}:9021 (Inside Kubernetes)
+      Internal: http://{{ $.Values.controlcenter.name }}:8021 (Inside Kubernetes)
+      {{- else }}
+      Internal: http://{{ $.Values.controlcenter.name }}:9021 (Inside Kubernetes)
+      {{- end }}
       
       Local Test:
 
         kubectl -n {{ .Release.Namespace }} port-forward {{ $.Values.controlcenter.name }}-0 12345:9021
-        {{- if .Values.controlcenter.tls.enabled }}
 
+        {{- if .Values.controlcenter.tls.enabled }}
         Open on browser: https://localhost:12345
         {{- else }}
-
         Open on browser: http://localhost:12345
         {{- end }}
 
@@ -275,14 +251,24 @@ The Connect Cluster endpoint does not support authorization and must not be open
   {{- if $.Values.connect.tls.enabled }}
      External REST Endpoint : https://{{ $.Values.connect.loadBalancer.prefix | default $.Values.connect.name }}.{{- $.Values.connect.loadBalancer.domain }}:{{ .Values.connect.tls.port }}
   {{- else }}
-     External REST Endpoint : http://{{ $.Values.connect.loadBalancer.prefix | default $.Values.connect.name }}:8083
+     External REST Endpoint : http://{{ $.Values.connect.loadBalancer.prefix | default $.Values.connect.name }}:80
   {{- end }}
   {{- end }}
+
+     {{- if .Values.connect.tls.enabled }}
+     Internal REST Endpoint : https://{{ $.Values.connect.name }}:8083 (Inside Kubernetes)
+     Internal REST Endpoint : http://{{ $.Values.connect.name }}:9083 (Inside Kubernetes)
+
+     OR
+
+     http://localhost:9083 (Inside Pod)
+     {{- else }}
      Internal REST Endpoint : http://{{ $.Values.connect.name }}:8083 (Inside Kubernetes)
 
      OR
 
      http://localhost:8083 (Inside Pod)
+     {{- end }}
 
      More information can be found here: https://docs.confluent.io/current/connect/references/restapi.html
 
@@ -306,17 +292,25 @@ The Replicator Connect Cluster endpoint does not support authorization and must 
   {{- if $.Values.replicator.tls.enabled }}
 
     External REST Endpoint : https://{{ $.Values.replicator.loadBalancer.prefix | default $.Values.replicator.name }}.{{- $.Values.replicator.loadBalancer.domain }}:{{ .Values.replicator.tls.port }}
-    Internal REST Endpoint : https://{{ $.Values.replicator.name }}:{{ .Values.replicator.tls.port }} (requires proper ssl CN)
   {{- else }}
-    External REST Endpoint : http://{{ $.Values.replicator.loadBalancer.prefix | default $.Values.replicator.name }}.{{- $.Values.replicator.loadBalancer.domain }}:8083
+    External REST Endpoint : http://{{ $.Values.replicator.loadBalancer.prefix | default $.Values.replicator.name }}.{{- $.Values.replicator.loadBalancer.domain }}:80
   {{- end }}
   {{- end }}
 
+    {{- if $.Values.replicator.tls.enabled }}
+    Internal REST Endpoint : https://{{ $.Values.replicator.name }}:8083  (Inside kubernetes)
+    Internal REST Endpoint : http://{{ $.Values.replicator.name }}:9083  (Inside kubernetes)
+
+    OR
+
+    http://localhost:9083 (Inside Pod)
+    {{- else }}
     Internal REST Endpoint : http://{{ $.Values.replicator.name }}:8083  (Inside kubernetes)
 
     OR
-  
+
     http://localhost:8083 (Inside Pod)
+    {{- end }}
   
     More information about configuration example can be found here,
 
@@ -338,17 +332,25 @@ Schema Registry is deployed through PSC. Configure Schema Registry through REST 
   {{- if .Values.schemaregistry.tls.enabled }}
 
     External REST Endpoint : https://{{ $.Values.schemaregistry.loadBalancer.prefix | default $.Values.schemaregistry.name }}.{{- $.Values.schemaregistry.loadBalancer.domain }}:{{ .Values.schemaregistry.tls.port }}
-    Internal REST Endpoint : https://{{ $.Values.schemaregistry.name }}:{{ .Values.schemaregistry.tls.port }} (requires proper ssl CN)
   {{- else }}
-    External REST Endpoint : http://{{ $.Values.schemaregistry.loadBalancer.prefix | default $.Values.schemaregistry.name }}.{{- $.Values.schemaregistry.loadBalancer.domain }}:8081
+    External REST Endpoint : http://{{ $.Values.schemaregistry.loadBalancer.prefix | default $.Values.schemaregistry.name }}.{{- $.Values.schemaregistry.loadBalancer.domain }}:80
   {{- end }}
   {{- end }}
 
+    {{- if .Values.schemaregistry.tls.enabled }}
+    Internal REST Endpoint : https://{{ $.Values.schemaregistry.name }}:8081  (Inside kubernetes)
+    Internal REST Endpoint : http://{{ $.Values.schemaregistry.name }}:9081  (Inside kubernetes)
+
+    OR
+
+    http://localhost:9081 (Inside Pod)
+    {{- else }}
     Internal REST Endpoint : http://{{ $.Values.schemaregistry.name }}:8081  (Inside kubernetes)
 
     OR
 
     http://localhost:8081 (Inside Pod)
+    {{- end }}
 
     More information about schema registry REST API can be found here,
 
@@ -374,17 +376,26 @@ KSQL is deployed through PSC
 
       External: https://{{ $.Values.ksql.loadBalancer.prefix | default $.Values.ksql.name }}.{{ $.Values.ksql.loadBalancer.domain }}:{{ $.Values.ksql.tls.port }}
       {{- else }}
-      External: http://{{ $.Values.ksql.loadBalancer.prefix | default $.Values.ksql.name }}.{{ $.Values.ksql.loadBalancer.domain }}:8088
+      External: http://{{ $.Values.ksql.loadBalancer.prefix | default $.Values.ksql.name }}.{{ $.Values.ksql.loadBalancer.domain }}:80
 
          Note: Create DNS entry and update LB as required. 
       {{- end }}
       {{- end }}
 
+      {{- if .Values.ksql.tls.enabled }}
+      Internal: https://{{ $.Values.ksql.name }}:8088 (Inside kubernetes)
       Internal: http://{{ $.Values.ksql.name }}:9088 (Inside kubernetes)
 
       OR
 
       http://localhost:9088 (Inside Pod)
+      {{- else }}
+      Internal: http://{{ $.Values.ksql.name }}:8088 (Inside kubernetes)
+
+      OR
+
+      http://localhost:8088 (Inside Pod)
+      {{- end }}
 
 {{- end }}
 

@@ -3,10 +3,6 @@ dependencies:
     version: ">=1.0.0"
     repository: file://./charts/operator
     condition: operator.enabled
-  - name: manager
-    version: ">=1.0.0"
-    repository: file://./charts/manager
-    condition: operator.enabled
   - name: externaldns
     version: ">=1.0.0"
     repository: file://./charts/externaldns
@@ -39,3 +35,4 @@ dependencies:
     version: ">=1.0.0"
     repository: file://./charts/ksql
     condition: ksql.enabled
+
