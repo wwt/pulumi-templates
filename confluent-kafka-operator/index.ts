@@ -27,8 +27,15 @@ const k8sKafkaProvider = new k8s.Provider("k8s-kafka", {
 });
 
 //Deploy Kafka
-new k8s.helm.v2.Chart("confluent-operator", {
+const confluentOperatorChart = new k8s.helm.v2.Chart("confluent-operator", {
     path: "confluent-operator/helm/confluent-operator",
     namespace: namespace.kafka,
     values: infraStack.getOutput("vpcZones").apply(vpcZones => awsConfluent.createConfig(vpcZones))
 }, {dependsOn: [kafkaNamespace], providers: {kubernetes: k8sKafkaProvider}});
+
+export const kafkaServiceHostname = confluentOperatorChart.getResourceProperty(
+    "v1/Service", namespace.kafka + "/kafka", "status")
+    .apply(svc => svc.loadBalancer.ingress[0].hostname);
+export const schemaRegistryServiceHostname = confluentOperatorChart.getResourceProperty(
+    "v1/Service", namespace.kafka + "/schemaregistry", "status")
+    .apply(svc => svc.loadBalancer.ingress[0].hostname);
