@@ -62,6 +62,9 @@ export function createConfig(zones: String[]) {
                     "memory": "1Gi"
                 }
             },
+            "volume": {
+                "data0": config.require("kafkaData0Size")
+            },
             "loadBalancer": {
                 "enabled": false,
                 "domain": ""

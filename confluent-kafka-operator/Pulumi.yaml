@@ -31,6 +31,9 @@ template:
     enableZookeeper:
       description: Enable the zookeeper component
       default: false
+    kafkaData0Size:
+      description: Size of the volume claim for each broker
+      default: 100Gi
     username:
       description: The Pulumi username used to log in
     infraProjectName:
