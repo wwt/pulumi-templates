@@ -26,7 +26,7 @@ A Pulumi program template that deploys the Confluent Operator and its components
 2. Create a new project:
 
    ```sh
-   pulumi new https://github.com/wwt/pulumi-templates/kafka-services
+   pulumi new https://github.com/wwt/pulumi-templates/confluent-kafka-operator
    ```
 
 3. Fill out the prompts appropriately. **Note: A Confluent License key is required. Trial key is ok.**
@@ -51,13 +51,13 @@ A Pulumi program template that deploys the Confluent Operator and its components
    pulumi config set enableSchemaRegistry true && pulumi update --skip-preview
    ```
 
-   
+
 
 ### Destroying the Infrastructure
 
-1. Disable all components except for the operator by setting all the configs for the respective components to `false` the running `pulumi update --skip-preview`
+1. Disable all components except for the operator by setting all the config vars for the respective components to `false` (e.g. `pulumi config set enableSchemaRegistry false`) then run `pulumi update --skip-preview`
 
-   * If the brokers do not fully terminate, go into your AWS console and detach the remaining EBS volumes. This will allow the brokers to fully terminate. Make sure the kafka pods are no longer present before proceeding with the next step.
+   * If the brokers stuck in a terminating state, go into your AWS console and detach the remaining EBS volumes. This will allow the brokers to fully terminate. Make sure the `kafka` pods are no longer present before proceeding with the next step.
 
 2. Run `pulumi destroy --skip-preview` to finish tearing down the stack.
 
@@ -67,5 +67,5 @@ A Pulumi program template that deploys the Confluent Operator and its components
    pulumi stack rm dev
    ```
 
-   
+
 
