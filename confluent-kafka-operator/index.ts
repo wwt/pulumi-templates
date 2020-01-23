@@ -33,9 +33,5 @@ const confluentOperatorChart = new k8s.helm.v2.Chart("confluent-operator", {
     values: infraStack.getOutput("vpcZones").apply(vpcZones => awsConfluent.createConfig(vpcZones))
 }, {dependsOn: [kafkaNamespace], providers: {kubernetes: k8sKafkaProvider}});
 
-export const kafkaServiceHostname = confluentOperatorChart.getResourceProperty(
-    "v1/Service", namespace.kafka + "/kafka", "status")
-    .apply(svc => svc.loadBalancer.ingress[0].hostname);
-export const schemaRegistryServiceHostname = confluentOperatorChart.getResourceProperty(
-    "v1/Service", namespace.kafka + "/schemaregistry", "status")
-    .apply(svc => svc.loadBalancer.ingress[0].hostname);
+export const kafkaServiceHostname = "kafka." + namespace.kafka + ".svc.cluster.local:9092";
+export const schemaRegistryServiceHostname = "http://schemaregistry." + namespace.kafka + ".svc.cluster.local:8081";
