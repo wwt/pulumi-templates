@@ -41,8 +41,10 @@ const cluster = new eks.Cluster("kafka-cluster", {
 export const kubeconfig = cluster.kubeconfig;
 
 // Export the vpc zones for use in the confluent operator aws provider config
-export const vpcZones = vpc.getSubnets("private").map(function(subnet) {
-    return subnet.id.apply(id => {
-        return aws.ec2.getSubnet({id: id}).availabilityZone;
+export const vpcZones = vpc.privateSubnetIds.then(function(subnetIds) {
+    return subnetIds.map(function (id) {
+        return id.apply(id => {
+            return aws.ec2.getSubnet({id: id}).availabilityZone;
+        });
     });
 });
