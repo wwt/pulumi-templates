@@ -3,7 +3,8 @@ import * as k8s from "@pulumi/kubernetes";
 import * as awsConfluent from "./awsProvider"
 
 const namespace = {
-    kafka: "kafka"
+    kafka: "kafka",
+    applications: "applications"
 };
 const config = new pulumi.Config();
 
@@ -16,9 +17,14 @@ const k8sGenericProvider = new k8s.Provider("k8s-generic", {
     kubeconfig: kubeconfig
 });
 
-//Create namespace
+//Create kafka namespace
 const kafkaNamespace = new k8s.core.v1.Namespace(namespace.kafka, {
     metadata: {name: namespace.kafka}
+}, {provider: k8sGenericProvider});
+
+//Create applications namespace
+const applicationsNamespace = new k8s.core.v1.Namespace(namespace.applications, {
+    metadata: {name: namespace.applications}
 }, {provider: k8sGenericProvider});
 
 //Create namespace providers
