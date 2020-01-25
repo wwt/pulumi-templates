@@ -20,7 +20,7 @@ A Pulumi program template that deploys the Confluent Operator and its components
 1. Create a new folder:
 
    ```sh
-   mkdir kafka-services && cd kafka-services
+   mkdir confluent-kafka-operator && cd confluent-kafka-operator
    ```
 
 2. Create a new project:
