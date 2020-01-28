@@ -1,7 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
 
 const config = new pulumi.Config();
+const awsConfig = new pulumi.Config("aws");
 
 export function createConfig(zones: String[]) {
     return {
@@ -12,7 +12,7 @@ export function createConfig(zones: String[]) {
         "global": {
             "provider": {
                 "name": "aws",
-                "region": aws.config.region,
+                "region": awsConfig.require("region"),
                 "kubernetes": {
                     "deployment": {
                         "zones": zones
