@@ -12,16 +12,16 @@ template:
       default: false
     desiredCapacity:
       description: The desired number of worker nodes
-      default: 10
+      default: 6
     instanceType:
       description: The type of EC2 instance for your worker nodes
-      default: r5.xlarge
+      default: m5.large
     maxSize:
       description: The max number of woker nodes
-      default: 10
+      default: 6
     minSize:
       description: The minimum number of worker nodes
-      default: 10
+      default: 6
     numOfAvailZones:
       description: The number of availability zones for the VPC
       default: 3
