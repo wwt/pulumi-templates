@@ -103,14 +103,29 @@ Distribution of pods placement based on zones
     component: {{ template "confluent-operator.name" $ }}
 {{- end }}
 
-{{/* Generate default annotations */}}
+{{/* Generate pod annotations for PSC */}}
 {{- define "confluent-operator.annotations" }}
 config.value.checksum: {{ include "confluent-operator.generate-sha256sum" .  | trim }}
 prometheus.io/scrape: "true"
 prometheus.io/port: "7778"
+{{- if .Values.alphaPodAnnotations }}
+{{- range $key, $value := .Values.alphaPodAnnotations }}
+{{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
 {{- end }}
 
-{{/* Generate operator finalizers */}}
+{{/* Generate pod annotations for CR */}}
+{{- define "confluent-operator.cr-annotations" }}
+{{- if .Values.alphaPodAnnotations }}
+podAnnotations:
+{{- range $key, $value := .Values.alphaPodAnnotations }}
+  {{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/* Generate PSC finalizers */}}
 {{- define "confluent-operator.finalizers" }}
   finalizers:
   - physicalstatefulcluster.core.confluent.cloud

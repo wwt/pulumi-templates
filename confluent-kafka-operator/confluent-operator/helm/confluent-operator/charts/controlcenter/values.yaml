@@ -9,7 +9,7 @@ license: ""
 name: controlcenter
 image:
   repository: confluentinc/cp-enterprise-control-center-operator
-  tag: 5.4.0.0
+  tag: 5.4.1.0
 ## Pod resources
 ##
 resources:
@@ -224,3 +224,13 @@ rack: {}
 ## If this feature is true, make sure to use nodeAffinity and rack to distribute pod across nodes.
 ## Take precaution before enabling it
 disableHostPort: true
+##
+## Inject pod-level annotations
+## Any changes on this field will trigger rolling restart
+##
+alphaPodAnnotations: {}
+#alphaPodAnnotations:
+#  string: "value"
+#  number: "1"
+#  boolean: "true"
+#  list: "[{\"labels\": {\"key\": \"value\"}},{\"key1\": \"value1\"}]"

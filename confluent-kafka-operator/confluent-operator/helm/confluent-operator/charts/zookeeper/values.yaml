@@ -11,7 +11,7 @@ name: zookeeper
 ##
 image:
   repository: confluentinc/cp-zookeeper-operator
-  tag: 5.4.0.0
+  tag: 5.4.1.0
 ## Pod resources requests and limits
 ##
 resources:
@@ -45,6 +45,17 @@ terminationGracePeriodSeconds: 180
 configOverrides:
   server: []
   jvm: []
+##
+## Inject pod-level annotations
+## The value must be type string, please use quotes for boolean/numbers
+## Any changes on this field will trigger rolling restart
+##
+alphaPodAnnotations: {}
+#alphaPodAnnotations:
+#  string: "value"
+#  number: "1"
+#  boolean: "true"
+#  list: "[{\"labels\": {\"key\": \"value\"}},{\"key1\": \"value1\"}]"
 
 ## Pod distribution on nodes with given key and values
 ## The node Affinity configuration uses preferredDuringSchedulingIgnoredDuringExecution
@@ -69,5 +80,3 @@ rack: {}
 ## If this feature is true, make sure to use nodeAffinity and rack to distribute pod across nodes.
 ## Take precaution before enabling it for the Zookeeper cluster
 disableHostPort: false
-
-

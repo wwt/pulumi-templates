@@ -12,7 +12,7 @@ replicas: 3
 ##
 image:
   repository: confluentinc/cp-server-connect-operator
-  tag: 5.4.0.0
+  tag: 5.4.1.0
 ## Pod resources configuration
 ##
 resources:
@@ -140,6 +140,7 @@ dependencies:
     tls:
       enabled: false
       authentication:
+        # Supported value is either empty or tls
         type: ""
 key:
   converter: org.apache.kafka.connect.json.JsonConverter
@@ -161,7 +162,7 @@ nodeAffinity : {}
 ## Pod Anti-Affinity
 ## It uses preferredDuringSchedulingIgnoredDuringExecution
 ## https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels
-## Use this capability, if the cluster has somekind of concept of racks
+## Use this capability, if the cluster has a concept of racks
 rack: {}
 #rack:
 # topology: kubernetes.io/hostname
@@ -171,3 +172,13 @@ rack: {}
 ## If this feature is true, make sure to use nodeAffinity and rack to distribute pod across nodes.
 ## Take precaution before enabling it for the Kafka cluster
 disableHostPort: true
+##
+## Inject pod-level annotations
+## Any changes on this field will trigger rolling restart
+##
+alphaPodAnnotations: {}
+#alphaPodAnnotations:
+#  string: "value"
+#  number: "1"
+#  boolean: "true"
+#  list: "[{\"labels\": {\"key\": \"value\"}},{\"key1\": \"value1\"}]"

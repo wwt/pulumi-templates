@@ -11,7 +11,7 @@ replicas: 2
 ##
 image:
   repository: confluentinc/cp-ksql-server-operator
-  tag: 5.4.0.0
+  tag: 5.4.1.0
 ## Pod termination grace-period
 ##
 terminationGracePeriodSeconds: 60
@@ -129,3 +129,13 @@ rack: {}
 ## If this feature is true, make sure to use nodeAffinity and rack to distribute pod across nodes.
 ## Take precaution before enabling it for the Kafka cluster
 disableHostPort: true
+##
+## Inject pod-level annotations
+## Any changes on this field will trigger rolling restart
+##
+alphaPodAnnotations: {}
+#alphaPodAnnotations:
+#  string: "value"
+#  number: "1"
+#  boolean: "true"
+#  list: "[{\"labels\": {\"key\": \"value\"}},{\"key1\": \"value1\"}]"

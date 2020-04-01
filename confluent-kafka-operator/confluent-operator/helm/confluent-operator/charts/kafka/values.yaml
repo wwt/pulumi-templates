@@ -11,7 +11,7 @@ name: kafka
 ##
 image:
   repository: confluentinc/cp-server-operator
-  tag: 5.4.0.0
+  tag: 5.4.1.0
 ## Pod resources configuration
 ##
 resources:
@@ -116,6 +116,18 @@ metricReporter:
 configOverrides:
   server: []
   jvm: []
+
+##
+## Inject pod-level annotations
+## The value must be type string, please use quotes for boolean/numbers
+## Any changes on this field will trigger rolling restart
+##
+alphaPodAnnotations: {}
+#alphaPodAnnotations:
+#  string: "value"
+#  number: "1"
+#  boolean: "true"
+#  list: "[{\"labels\": {\"key\": \"value\"}},{\"key1\": \"value1\"}]"
 
 ## Pod distribution on nodes with given key and values
 ## The node Affinity configuration uses preferredDuringSchedulingIgnoredDuringExecution

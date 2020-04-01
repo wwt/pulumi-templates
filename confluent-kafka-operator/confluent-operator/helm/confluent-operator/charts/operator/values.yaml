@@ -21,7 +21,7 @@ publicKey: |-
 ##
 image:
   repository: confluentinc/cp-operator-service
-  tag: 0.275.0
+  tag: 0.275.1
   pullPolicy: Always
 ## Confluent Operator Pod Resources
 ##

@@ -9,10 +9,6 @@ metadata:
   {{- include "confluent-operator.labels" . }}
   {{- include "confluent-operator.component-name" . }}
   {{- include "confluent-operator.namespace" . }}
-  {{- if .Values.forceClusterRoll }}
-  annotations:
-    force.cluster.roll.generation: {{ .Values.forceClusterRoll | quote }}
-  {{- end }}
 spec:
   replicas: {{ .Values.replicas | int }}
   image: {{ .Values.global.provider.registry.fqdn }}/{{ .Values.image.repository -}}:{{- .Values.image.tag }}
@@ -36,6 +32,7 @@ spec:
   {{- if .Values.global.provider.kubernetes.clusterDomain }}
   internalKubDomain: {{ .Values.global.provider.kubernetes.clusterDomain }}
   {{- end }}
+  {{- include "confluent-operator.cr-annotations" .  | indent 2 }}
   resources:
 {{- include "confluent-operator.resource-requirements" . | indent 4 }}
     storage:
