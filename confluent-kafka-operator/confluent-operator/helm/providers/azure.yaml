@@ -11,15 +11,6 @@ global:
          zones:
           - "1"
           - "2"
-    storage:
-      ## https://kubernetes.io/docs/concepts/storage/storage-classes/#azure-disk
-      ##
-      provisioner: kubernetes.io/azure-disk
-      ## Use Retain if you want to persist data after CP cluster has been uninstalled
-      reclaimPolicy: Delete
-      parameters:
-        storageaccounttype: Standard_LRS
-        kind: managed
     ## Docker registry endpoint where Confluent Images are available.
     ##
     registry:
@@ -30,6 +21,16 @@ global:
     plain:
       username: test
       password: test123
+  authorization:
+    rbac:
+      enabled: false
+    simple:
+      enabled: false
+    superUsers: []
+  dependencies:
+    mds:
+      endpoint: ""
+      publicKey: ""
 ## Zookeeper cluster
 ##
 zookeeper:

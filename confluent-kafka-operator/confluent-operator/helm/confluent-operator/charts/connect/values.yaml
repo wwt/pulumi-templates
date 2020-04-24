@@ -12,7 +12,7 @@ replicas: 3
 ##
 image:
   repository: confluentinc/cp-server-connect-operator
-  tag: 5.4.1.0
+  tag: 5.5.0.0
 ## Pod resources configuration
 ##
 resources:
@@ -30,14 +30,17 @@ jvmConfig:
 
 ## Endpoint Configuration
 tls:
- enabled: false
- port: 443
- authentication:
-  type: ""
- cacerts: |-
- fullchain: |-
- privkey: |-
-
+  enabled: false
+  port: 443
+  authentication:
+    type: ""
+  jmxTLS: false
+  jmxAuthentication:
+    type: ""
+  jksPassword: mystorepassword
+  cacerts: |-
+  fullchain: |-
+  privkey: |-
 ## Pod termination grace-period
 ##
 terminationGracePeriodSeconds: 30
@@ -142,6 +145,12 @@ dependencies:
       authentication:
         # Supported value is either empty or tls
         type: ""
+  ## Metadata service for CP RBAC configuration
+  ##
+  mds:
+    authentication:
+      username: ""
+      password: ""
 key:
   converter: org.apache.kafka.connect.json.JsonConverter
 value:
@@ -176,8 +185,8 @@ disableHostPort: true
 ## Inject pod-level annotations
 ## Any changes on this field will trigger rolling restart
 ##
-alphaPodAnnotations: {}
-#alphaPodAnnotations:
+podAnnotations: {}
+#podAnnotations:
 #  string: "value"
 #  number: "1"
 #  boolean: "true"

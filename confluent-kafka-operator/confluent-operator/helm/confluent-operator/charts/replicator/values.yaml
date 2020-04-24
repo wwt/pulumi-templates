@@ -12,7 +12,7 @@ replicas: 3
 ##
 image:
   repository: confluentinc/cp-enterprise-replicator-operator
-  tag: 5.4.1.0
+  tag: 5.5.0.0
 ## Pod resources configuration
 ##
 resources:
@@ -30,13 +30,17 @@ jvmConfig:
 
 ## REST Endpoint Configuration
 tls:
- enabled: false
- port: 443
- authentication:
-  type: ""
- fullchain: |-
- privkey: |-
- cacerts: |-
+  enabled: false
+  port: 443
+  authentication:
+    type: ""
+  jmxTLS: false
+  jmxAuthentication:
+    type: ""
+  jksPassword: mystorepassword
+  cacerts: |-
+  fullchain: |-
+  privkey: |-
 
 ## Pod termination grace-period
 ##
@@ -80,7 +84,13 @@ dependencies:
     bootstrapEndpoint: ""
     ## Broker initial count configuration
     ##
-    brokerCount: 3    
+    brokerCount: 3
+  ## Metadata service for CP RBAC configuration
+  ##
+  mds:
+    authentication:
+      username: ""
+      password: ""
 
 key:
   converter: org.apache.kafka.connect.json.JsonConverter
@@ -116,8 +126,8 @@ disableHostPort: true
 ## Inject pod-level annotations
 ## Any changes on this field will trigger rolling restart
 ##
-alphaPodAnnotations: {}
-#alphaPodAnnotations:
+podAnnotations: {}
+#podAnnotations:
 #  string: "value"
 #  number: "1"
 #  boolean: "true"

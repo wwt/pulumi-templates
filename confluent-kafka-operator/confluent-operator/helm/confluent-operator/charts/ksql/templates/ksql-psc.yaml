@@ -7,6 +7,11 @@
 {{- $_ := required "Docker Repository FQDN path is required" .Values.global.provider.registry.fqdn }}
 {{- $k8sInternalDomain := default "svc.cluster.local" $.Values.global.provider.kubernetes.clusterDomain }}
 {{- $replicas := .Values.replicas | int }}
+{{- if and .Values.global.provider.storage .Values.global.storageClassName }}
+{{- fail "Only one between global.provider.storage and global.storageClassName can be set." }}
+{{- end }}
+{{- $helmManagedStorage := .Values.global.provider.storage }}
+{{- $storageClassName := .Values.storageClassName | default .Values.global.storageClassName }}
 apiVersion: operator.confluent.cloud/v1
 kind: PhysicalStatefulCluster
 metadata:
@@ -53,9 +58,8 @@ spec:
         value: |
           disk.data=/mnt/data/data
           service.name={{ $.Values.name }}
-      - name: ksql-server.properties
+      - name: ksqldb-server.properties
         value: |2
-          ## endpoint configuration with TLS option
           {{- if .Values.tls.enabled }}
           listeners=http://0.0.0.0:9088,https://0.0.0.0:8088
           {{- if eq $.Values.tls.authentication.type "tls" }}
@@ -64,22 +68,26 @@ spec:
           {{- end }}
           {{- if .Values.tls.cacerts }}
           ssl.truststore.location=/tmp/truststore.jks
-          ssl.truststore.password=mystorepassword
+          ssl.truststore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
           {{- end }}
           ssl.keystore.location=/tmp/keystore.jks
-          ssl.keystore.password=mystorepassword
-          ssl.key.password=mystorepassword
+          ssl.keystore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
+          ssl.key.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
           {{- else }}
           listeners=http://0.0.0.0:9088,http://0.0.0.0:8088
           {{- end }}
-          request.timeout.ms=20000
-          retry.backoff.ms=500
-
-          ## kafka client configuration
-          {{- include "ksql.kafka-configuration" . | indent 10 }}
-
+{{ include "confluent-operator.cp-mds-config" . | indent 10 }}
+          {{- if .Values.global.authorization.rbac.enabled }}
+          config.providers=file
+          config.providers.file.class=org.apache.kafka.common.config.provider.FileConfigProvider
+          ksql.security.extension.class=io.confluent.ksql.security.KsqlConfluentSecurityExtension
+          confluent.metadata.http.auth.credentials.provider=BASIC
+          rest.servlet.initializor.classes=io.confluent.common.security.jetty.initializer.InstallBearerOrBasicSecurityHandler
+          websocket.servlet.initializor.classes=io.confluent.common.security.jetty.initializer.InstallBearerOrBasicSecurityHandler
+          {{- end }}
+{{ include "ksql.kafka-configuration" . | indent 10 }}
           ## ksql configuration
-          ksql.service.id={{ $.Release.Namespace }}.{{ $.Values.name }}
+          ksql.service.id={{ .Release.Namespace }}.{{ $.Values.name }}_
           ksql.sink.replicas={{ include "confluent-operator.replication_count" $ }}
           ksql.streams.replication.factor={{ include "confluent-operator.replication_count" $ }}
           ksql.streams.state.dir=/mnt/data/data/ksql-state
@@ -87,9 +95,8 @@ spec:
           ksql.streams.producer.confluent.batch.expiry.ms=9223372036854775807
           ksql.streams.producer.request.timeout.ms=300000
           ksql.streams.producer.max.block.ms=9223372036854775807
-          ksql.streams.num.standby.replicas=1         
-
-          {{- if $.Values.basicAuth }}
+          ksql.streams.num.standby.replicas=1
+          {{- if .Values.basicAuth }}
           ## basic auth configuration
           authentication.method=BASIC
           authentication.roles={{ .Values.basicAuth.role }}
@@ -97,43 +104,46 @@ spec:
           authentication.skip.paths=/chc/*
           java.security.auth.login.config=/mnt/config/shared/server_jaas.conf
           {{- end }}
-
-          {{- if $.Values.dependencies.schemaRegistry.enabled }}
+          {{- if .Values.dependencies.schemaRegistry.enabled }}
           {{- $_ := required "SchemaRegistry URL required" .Values.dependencies.schemaRegistry.url }}
           ## schemaregistry configuration
           ksql.schema.registry.url={{ $.Values.dependencies.schemaRegistry.url }}
-          {{- if $.Values.dependencies.schemaRegistry.tls.enabled }}
+          {{- if .Values.global.authorization.rbac.enabled }}
+          ksql.schema.registry.basic.auth.user.info=${file:/mnt/secrets/mds.txt:credential}
+          {{- end }}
+          {{- if .Values.dependencies.schemaRegistry.tls.enabled }}
           {{- if eq $.Values.dependencies.schemaRegistry.tls.authentication.type "tls" }}
           ksql.schema.registry.ssl.keystore.location=/tmp/keystore.jks
-          ksql.schema.registry.ssl.keystore.password=mystorepassword
-          ksql.schema.registry.ssl.key.password=mystorepassword
+          ksql.schema.registry.ssl.keystore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
+          ksql.schema.registry.ssl.key.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
           {{- end }}
-          {{- if $.Values.tls.cacerts }}
+          {{- if .Values.tls.cacerts }}
           ksql.schema.registry.ssl.truststore.location=/tmp/truststore.jks
-          ksql.schema.registry.ssl.truststore.password=mystorepassword
+          ksql.schema.registry.ssl.truststore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
           {{- end }}
           {{- end }}
           {{- end }}
-
           {{- if .Values.dependencies.interceptor.enabled }}
           ## interceptor config
-          {{- include "ksql.interceptor-security-config" . | indent 10 }}
+{{ include "ksql.interceptor-security-config" . | indent 10 }}
           {{- end }}
-
-          confluent.support.metrics.enable=false
+          confluent.support.metrics.enable=true
           resource.extension.classes=io.confluent.cloud.ksql.rest.health.HealthCheckResourceExtension
+          request.timeout.ms=20000
+          retry.backoff.ms=500
       - name: admin.properties
-        value: |2
+        value: |
           {{- $_ := set $ "kafkaDependency" .Values.dependencies.kafka }}
-          {{- include "confluent-operator.kafka-client-security" . | indent 10 }}
+{{ include "confluent-operator.kafka-client-security" . | indent 10 }}
+      {{- $_ := set $ "tlsEnable" .Values.tls.jmxTLS }}
+      {{- $_ := set $ "authType" .Values.tls.jmxAuthentication.type }}
+{{ include "confluent-operator.jolokia-security-configs" . | indent 6 }}
       - name: jvm.config
         value: |2
-
           -Xmx {{- $.Values.jvmConfig.heapSize }}
           -Xms {{- $.Values.jvmConfig.heapSize }}
           -XX:+UnlockExperimentalVMOptions
           -XX:+UseCGroupMemoryLimitForHeap
-
           -server
           -XX:MetaspaceSize=96m
           -XX:+UseG1GC
@@ -144,19 +154,21 @@ spec:
           -XX:MinMetaspaceFreeRatio=50
           -XX:MaxMetaspaceFreeRatio=80
           -Djava.awt.headless=true
-
           -XX:ParallelGCThreads=1
           -XX:ConcGCThreads=1
-
           -Dcom.sun.management.jmxremote=true
           -Dcom.sun.management.jmxremote.authenticate=false
-          -Dcom.sun.management.jmxremote.ssl=false
           -Dcom.sun.management.jmxremote.local.only=false
           -Dcom.sun.management.jmxremote.rmi.port=7203
           -Dcom.sun.management.jmxremote.port=7203
-
           -XX:+PrintFlagsFinal
           -XX:+UnlockDiagnosticVMOptions
+          {{- $_ := set $ "tlsEnable" false }}
+          {{- $_ := set $ "authType" "" }}
+          {{- $_ := set $ "jmxTLSEnable" .Values.tls.jmxTLS }}
+          {{- $_ := set $ "jmxAuthType" .Values.tls.jmxAuthentication.type }}
+{{ include "confluent-operator.jvm-security-configs" . | indent 10 }}
+{{ include "confluent-operator.jmx-security-configs" . | indent 10 }}
     pod_annotations:
     {{- include "confluent-operator.annotations" . | indent 6 }}
     {{- include "confluent-operator.psc-init-container" . | indent 4 }}
@@ -165,13 +177,21 @@ spec:
       termination_grace_period_seconds: {{ $.Values.terminationGracePeriodSeconds | default 60}}
       liveness_probe:
         http:
+          {{- if .Values.global.authorization.rbac.enabled }}
+          path: /v1/metadata/id
+          {{- else }}
           path: /chc/live
+          {{- end }}
           port: 9088
         initial_delay_seconds: 30
         timeout_seconds: 10
       readiness_probe:
         http:
+          {{- if .Values.global.authorization.rbac.enabled }}
+          path: /v1/metadata/id
+          {{- else }}
           path: /chc/ready
+          {{- end }}
           port: 9088
         initial_delay_seconds: 30
         timeout_seconds: 10
@@ -222,7 +242,9 @@ spec:
       {{- end }}
     {{- $_ := set $ "name" $.Values.name }}
     {{- $_ := set $ "replicas" .Values.replicas }}
+    {{- if and (not $storageClassName) $helmManagedStorage }}
     placement: {{ include "confluent-operator.pod-distribution" . }}
+    {{- end }}
     replicas: {{ .Values.replicas }}
     resources:
 {{- include "confluent-operator.resource-requirements" . | indent 6}}
@@ -230,7 +252,13 @@ spec:
       {{- range $key, $value := .Values.volume }}
       - capacity: {{ $value }}
         name: {{ $key }}
+        {{- if or (not $helmManagedStorage) $storageClassName }}
+        {{- if $storageClassName }}
+        storage_class_name: {{ $storageClassName }}
+        {{- end }}
+        {{- else }}
         type: 1
+        {{- end }}
       {{- end }}
     {{- include "confluent-operator.psc-version" . | indent 4 }}
   type: {{ $.Values.name }}

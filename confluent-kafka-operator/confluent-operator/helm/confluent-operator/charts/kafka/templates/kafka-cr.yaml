@@ -2,6 +2,11 @@
 {{- $_ := required "Name of kafka is required." $.Values.name }}
 {{- $_ := required "Kafka replica count is required" $.Values.replicas }}
 {{- $_ := required "Docker Repository FQDN path is required" .Values.global.provider.registry.fqdn }}
+{{- if and .Values.global.provider.storage .Values.global.storageClassName }}
+{{- fail "Only one between global.provider.storage and global.storageClassName can be set." }}
+{{- end }}
+{{- $storageClassName := .Values.storageClassName | default .Values.global.storageClassName }}
+
 
 apiVersion: cluster.confluent.com/v1alpha1
 kind: KafkaCluster
@@ -39,6 +44,9 @@ spec:
     {{- range $key, $value := .Values.volume }}
     - name: {{ $key }}
       capacity: {{ $value }}
+      {{- if $storageClassName }}
+      storageClassName: {{ $storageClassName }}
+      {{- end }}
     {{- end }}
   {{- if or (or .Values.nodeAffinity .Values.rack) .Values.disableHostPort }}  
   placement:
@@ -80,18 +88,52 @@ spec:
     brokerPrefix: {{ .Values.loadBalancer.brokerPrefix }}
     {{- end }}
   {{- end }}
-  {{- if .Values.tls.enabled }}
-  {{- $_ := required "Fullchain PEM cannot be empty" .Values.tls.fullchain }}
-  {{- $_ := required "Private key pem cannot be empty." .Values.tls.privkey }}
+  {{- if .Values.tls.enabled  }}
   tls:
-     enabled: {{ .Values.tls.enabled }}
-     {{- if and .Values.tls.authentication (not (empty .Values.tls.authentication.type)) }}
-     authentication:
-        type: {{ .Values.tls.authentication.type }}
-     {{- end }}
+    enabled: {{ .Values.tls.enabled }}
+    {{- if and .Values.tls.authentication (not (empty .Values.tls.authentication.type)) }}
+    authentication:
+      type: {{ .Values.tls.authentication.type }}
+    {{- end }}
+    {{- if .Values.tls.authentication.principalMappingRules }}
+    principalMappingRules:
+{{ toYaml .Values.tls.authentication.principalMappingRules | trim | indent 4 }}
+    {{- end }}
+    jmxTLS: {{ .Values.tls.jmxTLS }}
+    {{- if and (and .Values.tls.jmxAuthentication .Values.tls.jmxTLS) (not (empty .Values.tls.jmxAuthentication.type)) }}
+    jmxAuthentication:
+      type: {{ .Values.tls.jmxAuthentication.type }}
+    {{- end }}
   {{- end }}
+  {{- if .Values.global.authorization.rbac.enabled }}
+  authorization:
+   type: rbac
+   {{- if .Values.global.authorization.superUsers }}
+   superUsers:
+{{ toYaml .Values.global.authorization.superUsers | trim | indent 4 }}
+   {{- end }}
+   rbac:
+    mds:
+      https: {{ .Values.services.mds.https }}
+  {{- include "kafka.rbac_ldap" . | indent 4 }}
+  {{- end }}
+  {{- if and (not .Values.global.authorization.rbac.enabled) .Values.global.authorization.simple.enabled }}
+  authorization:
+    type: simple
+    {{- if and .Values.tls.enabled (ne .Values.tls.authentication.type "plain") }}
+    superUsers:
+    - User:ANONYMOUS
+{{ toYaml .Values.global.authorization.superUsers | trim | indent 4 }}
+    {{- else }}
+    superUsers:
+    - {{ printf "User:%s" .Values.global.sasl.plain.username }}
+{{ toYaml .Values.global.authorization.superUsers | trim | indent 4 }}
+    {{- end }}
+   {{- end }}
 {{- if (eq (len $.Values.global.provider.kubernetes.deployment.zones) 0) }}
 {{- fail "Provide atleast 1 zone information for .Values.global.provider.kubernetes.deployment.zones " }}
-{{- end }}  
-  zones: 
+{{- end }}
+{{- if and (not $storageClassName) .Values.global.provider.storage }}
+  zones:
 {{ toYaml .Values.global.provider.kubernetes.deployment.zones | trim | indent 4 }}
+{{- end }}

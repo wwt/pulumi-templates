@@ -1,3 +1,4 @@
+{{ include "confluent-operator.cert-required" . }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -5,15 +6,14 @@ metadata:
   namespace: {{ .Release.Namespace }}
   name: {{ .Values.name }}-sslcerts
 type: Opaque
-{{- if and (not (empty .Values.tls.fullchain)) (not (empty .Values.tls.privkey)) }}
-{{- $_ := required "Fullchain PEM cannot be empty" .Values.tls.fullchain }}
-{{- $_ := required "Private key pem cannot be empty." .Values.tls.privkey }}
-{{- $_ := required "Missing TLS port" .Values.tls.port }}
 data:
+  {{- if .Values.tls.fullchain }}
   fullchain.pem: {{ .Values.tls.fullchain | b64enc }}
+  {{- end }}
+  {{- if .Values.tls.privkey }}
   privkey.pem: {{ .Values.tls.privkey | b64enc }}
+  {{- end }}
   {{- if .Values.tls.cacerts }}
   cacerts.pem: {{ .Values.tls.cacerts | b64enc }}
   {{- end }}
-{{- end }}
-
+  {{- include "confluent-operator.mds-publickey" . | indent 2 }}

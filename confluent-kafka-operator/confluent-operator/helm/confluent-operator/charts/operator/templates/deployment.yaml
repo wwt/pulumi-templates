@@ -63,6 +63,12 @@ spec:
         - --enable-prometheus-exporter
         - --prometheus-port={{ .Values.metrics.prometheus.port }}
         {{- end }}
+        {{- if .Values.namespaced }}
+        - --namespace={{ .Release.Namespace }}
+        {{- end }}
+        {{- if or (.Values.namespaced) (not .Values.installClusterResources) }}
+        - --installCRDs=false
+        {{- end }}
         name: {{ .Values.name }}
         image: {{ .Values.global.provider.registry.fqdn }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}

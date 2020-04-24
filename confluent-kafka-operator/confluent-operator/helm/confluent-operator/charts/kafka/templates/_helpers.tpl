@@ -50,3 +50,16 @@ Create SASL Users
 {{- end }}
 {{- printf "{ \"keys\": { %s}}" (join ", " $result.users) }}
 {{- end }}
+
+{{/*
+Create RBAC/ACL configurations
+*/}}
+{{- define "kafka.rbac_ldap" }}
+ldap:
+  authentication:
+    type: simple
+{{- $_ := required "ldap address required" .Values.services.mds.ldap.address }}
+  address: {{ .Values.services.mds.ldap.address }}
+  configurations:
+{{ toYaml .Values.services.mds.ldap.configurations | indent 4 }}
+{{- end }}

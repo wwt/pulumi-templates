@@ -37,11 +37,9 @@ spec:
           log4j.rootLogger=INFO, stdout
       - name: schema-registry.properties
         value: |2
-
-          # Start Kafka security
-          {{- include "schemaregistry.kafka-config" .  | indent 10 }}
-          # End kafka security
-      
+          config.providers=file
+          config.providers.file.class=org.apache.kafka.common.config.provider.FileConfigProvider
+{{ include "schemaregistry.kafka-config" .  | indent 10 }}
           kafkastore.topic=_schemas_{{ .Values.name}}_{{ .Release.Namespace }}
           kafkastore.topic.replication.factor={{ include  "confluent-operator.replication_count" $ }}
           schema.registry.group.id=id_{{ .Values.name}}_{{ .Release.Namespace }}
@@ -49,25 +47,39 @@ spec:
           {{- if .Values.tls.enabled }}
           listeners=http://0.0.0.0:9081,https://0.0.0.0:8081
           ssl.keystore.location=/tmp/keystore.jks
-          ssl.keystore.password=mystorepassword
-          ssl.key.password=mystorepassword
+          ssl.keystore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
+          ssl.key.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
           {{- if eq .Values.tls.authentication.type "tls" }}
           ssl.client.auth=true
           {{- end }}
           {{- if .Values.tls.cacerts }}
           ssl.truststore.location=/tmp/truststore.jks
-          ssl.truststore.password=mystorepassword
+          ssl.truststore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
           {{- end }}
           {{- else }}
           listeners=http://0.0.0.0:9081,http://0.0.0.0:8081
           metrics.jmx.prefix={{ .Values.name}}_{{ .Release.Namespace }}
           {{- end }}
+{{ include "confluent-operator.cp-mds-config" . | indent 10 }}
+          {{- if .Values.global.authorization.rbac.enabled }}
+          confluent.metadata.http.auth.credentials.provider=BASIC
+          schema.registry.resource.extension.class=io.confluent.kafka.schemaregistry.security.SchemaRegistrySecurityResourceExtension
+          confluent.schema.registry.authorizer.class=io.confluent.kafka.schemaregistry.security.authorizer.rbac.RbacAuthorizer
+          rest.servlet.initializor.classes=io.confluent.common.security.jetty.initializer.InstallBearerOrBasicSecurityHandler
+          confluent.schema.registry.auth.mechanism=JETTY_AUTH
+          {{- $_ := required "Zookeeper endpoint required" .Values.dependencies.mds.zookeeper.endpoint }}
+          kafkastore.connection.url={{ .Values.dependencies.mds.zookeeper.endpoint }}
+          {{- end }}
+          {{- $_ := set $ "tlsEnable" .Values.tls.jmxTLS }}
+          {{- $_ := set $ "authType" .Values.tls.jmxAuthentication.type }}
+{{ include "confluent-operator.jolokia-security-configs" . | indent 6 }}
+
       - name: jvm.config
         value: |2
         {{- include "schemaregistry.jvm-config" . | indent 10 }}
       - name: admin.properties
         value: |2
-          {{ include "confluent-operator.kafka-client-security" . | indent 10 }}
+{{ include "confluent-operator.kafka-client-security" . | indent 10 }}
     pod_annotations:
     {{- include "confluent-operator.annotations" . | indent 6 }}
     {{- include "confluent-operator.psc-init-container" . | indent 4 }}
@@ -78,7 +90,7 @@ spec:
         exec:
           command: 
           - curl
-          - http://localhost:9081
+          - http://localhost:9081/v1/metadata/id
         initial_delay_seconds: 10
         timeout_seconds: 10
       {{- if $.Values.nodeAffinity }}

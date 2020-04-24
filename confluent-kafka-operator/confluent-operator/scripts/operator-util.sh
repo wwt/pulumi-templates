@@ -191,7 +191,12 @@ function run_cp() {
     helm_common_args="--wait --timeout 600s"
   fi
   local kubectl_cmd="kubectl --context ${context} -n ${namespace}"
-  
+
+  kubectl --context ${context} -n ${namespace} get sa default -oyaml | grep "confluent-docker-registry"  2>&1 > /dev/null
+  if [[ $? != 0 ]]; then
+    run_cmd "${kubectl_cmd} patch serviceaccount default -p '{\"imagePullSecrets\": [{\"name\": \"confluent-docker-registry\" }]}'" ${verbose}
+  fi
+
   ## Operator
   helm_args="--set operator.enabled=true ${helm_common_args}"
   run_cmd "$(run_helm_command ${helm_file_path} "${release_prefix}-operator")" ${verbose}

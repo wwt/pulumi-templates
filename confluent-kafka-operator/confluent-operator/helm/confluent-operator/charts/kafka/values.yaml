@@ -1,6 +1,9 @@
 ## If false, kafka will not be installed
 ##
 enabled: false 
+## inject license key for security plugins
+##
+license: ""
 ## Total replica count equals to the total node required to deploy pods
 ##
 replicas: 3
@@ -11,7 +14,7 @@ name: kafka
 ##
 image:
   repository: confluentinc/cp-server-operator
-  tag: 5.4.1.0
+  tag: 5.5.0.0
 ## Pod resources configuration
 ##
 resources:
@@ -22,6 +25,13 @@ resources:
     cpu: "1"
     memory: 4Gi
   limits: {}
+
+## User can set storageClassName to provide a user-created storage class. This setting at component-level takes precedence over the global-level.
+## If storageClassName is left blank ("") and global.provider.storage is empty, the default storage class will be used.
+## If storageClassName is left blank ("") and global.provider.storage is not empty, storage classes will be created
+## and used, one per availability zone.
+storageClassName: ""
+
 ## Volume size
 ##
 volume:
@@ -33,6 +43,33 @@ options:
     enabled: false
     # value for super.users server property, takes form User:UserName;User:UserTwo;
     supers: ""
+##
+## MDS service
+##
+services:
+  mds:
+    https: false
+    ## Token KeyPair
+    ##
+    tokenKeyPair: ""
+    ldap:
+      ## Ldap address as ldap|s://<address>:389|689
+      ##
+      address: ""
+      authentication:
+        simple:
+           credentials: ""
+           principal: ""
+      configurations:
+        groupNameAttribute: "sAMAccountName"
+        groupObjectClass: "group"
+        groupMemberAttribute: "member"
+        groupMemberAttributePattern: ""
+        groupSearchBase: ""
+        userNameAttribute: "sAMAccountName"
+        userMemberOfAttributePattern: ""
+        userObjectClass: ""
+        userSearchBase: ""
 ## JVM configuration
 ##
 jvmConfig:
@@ -61,7 +98,7 @@ loadBalancer:
   ## If not configured, the default value will be 'b' appended to the domain name as prefix ( dot's are not supoorted in the prefix)
   ##
   brokerPrefix: ""
-## Enable Apache Kafka to run on TLS mode. 
+## Enable Apache Kafka's external listener to run on TLS mode.
 ##
 tls:
   ##
@@ -69,16 +106,29 @@ tls:
   ##
   enabled: false
   ##
-  ## TLS Authentication type
+  ## Authentication type
   ##
   authentication:
     ## 
     ## Enable different type of authentication, supported is tls (2-way TLS ) or plain (SASL with plain authentication)
     ##
     type: ""
+    ##
+    ## Customize SSL users name for tls mutual authentication for ACL configurations
+    ##
+    principalMappingRules: []
+  ##
+  ## JMX/Jolokia TLS
+  ##
+  jmxTLS: false
+  ## JMX/Jolokia type of client authentication
+  jmxAuthentication:
+    type: ""
+  ## Keystore password to use
+  jksPassword: mystorepassword
+  cacerts: |-
   fullchain: |-
   privkey: |-
-  cacerts: |-
 ##
 ## Only for SASL Plain configurations
 ## These users will be loaded dynamically without restarting the Kafka cluster when running helm upgrade.
@@ -116,14 +166,15 @@ metricReporter:
 configOverrides:
   server: []
   jvm: []
+  log4j: []
 
 ##
 ## Inject pod-level annotations
 ## The value must be type string, please use quotes for boolean/numbers
 ## Any changes on this field will trigger rolling restart
 ##
-alphaPodAnnotations: {}
-#alphaPodAnnotations:
+podAnnotations: {}
+#podAnnotations:
 #  string: "value"
 #  number: "1"
 #  boolean: "true"

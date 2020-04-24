@@ -10,14 +10,6 @@ global:
          ## If kubernetes is deployed in single availability zone then specify appropriate values
          zones:
           - us-central1-a
-    storage:
-      ## https://kubernetes.io/docs/concepts/storage/storage-classes/#gce
-      ##
-      provisioner: kubernetes.io/gce-pd
-      ## Use Retain if you want to persist data after CP cluster has been uninstalled
-      reclaimPolicy: Delete
-      parameters:
-        type: pd-ssd
     ## Docker registry endpoint where Confluent Images are available.
     ##
     registry:
@@ -28,6 +20,16 @@ global:
     plain:
       username: test
       password: test123
+  authorization:
+    rbac:
+      enabled: false
+    simple:
+      enabled: false
+    superUsers: []
+  dependencies:
+    mds:
+      endpoint: ""
+      publicKey: ""
 
 ## Zookeeper cluster
 ##

@@ -11,7 +11,7 @@ replicas: 2
 ##
 image:
   repository: confluentinc/cp-schema-registry-operator
-  tag: 5.4.1.0
+  tag: 5.5.0.0
 ## Pod termination grace-period
 ##
 terminationGracePeriodSeconds: 60
@@ -22,7 +22,7 @@ resources:
   ## If not configured, kubernetes will set cpu/memory defaults.
   ## Reference: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
   requests:
-    cpu: 200m
+    cpu: 250m
     memory: 4Gi
   limits: {}
 
@@ -34,13 +34,17 @@ jvmConfig:
 ## Endpoint Configuration
 ##
 tls:
- enabled: false
- port: 443
- authentication:
-  type: ""
- fullchain: |-
- privkey: |-
- cacerts: |-
+  enabled: false
+  port: 443
+  authentication:
+    type: ""
+  jmxTLS: false
+  jmxAuthentication:
+    type: ""
+  jksPassword: mystorepassword
+  cacerts: |-
+  fullchain: |-
+  privkey: |-
 
 ## External Access
 ##
@@ -85,6 +89,14 @@ dependencies:
     ## Broker initial count configuration
     ##
     brokerCount: 3
+  ## Metadata service for CP RBAC configuration
+  ##
+  mds:
+    authentication:
+      username: ""
+      password: ""
+    zookeeper:
+      endpoint: ""
     
 ## Pod distribution on nodes with given key and values
 ## The node Affinity configuration uses preferredDuringSchedulingIgnoredDuringExecution
@@ -113,8 +125,8 @@ disableHostPort: true
 ## Inject pod-level annotations
 ## Any changes on this field will trigger rolling restart
 ##
-alphaPodAnnotations: {}
-#alphaPodAnnotations:
+podAnnotations: {}
+#podAnnotations:
 #  string: "value"
 #  number: "1"
 #  boolean: "true"

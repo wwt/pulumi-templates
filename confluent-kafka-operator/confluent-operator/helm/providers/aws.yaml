@@ -12,14 +12,6 @@ global:
           - us-west-2a
           - us-west-2b
           - us-west-2c
-    storage:
-      provisioner: kubernetes.io/aws-ebs
-      ## Use Retain if you want to persist data after CP cluster has been uninstalled
-      reclaimPolicy: Delete
-      parameters:
-        encrypted: "false"
-        kmsKeyId: ""
-        type: gp2
     ## Docker registry endpoint where Confluent Images are available.
     ##
     registry:
@@ -30,6 +22,16 @@ global:
     plain:
       username: test
       password: test123
+  authorization:
+    rbac:
+      enabled: false
+    simple:
+      enabled: false
+    superUsers: []
+  dependencies:
+    mds:
+      endpoint: ""
+      publicKey: ""
 ## Zookeeper cluster
 ##
 zookeeper:

@@ -54,3 +54,24 @@ Monitoring Kafka Cluster configurations
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/*
+Kafka  security for source-replicator
+*/}}
+{{- define "c3.source-replicator" }}
+{{- if .Values.dependencies.replicatorMonitoring.enabled }}
+{{- $value := set $ "kafkaDependency" .Values.dependencies.replicatorMonitoring.source }}
+{{- range $key, $val := splitList "\n" (include "confluent-operator.kafka-client-security" .)  }}
+{{- if not (empty $val) }}
+{{- if contains "sasl.jaas.config" $val }}
+{{- $_ := required "username is required" $value.username }}
+{{- $_ := required "password is required" $value.password }}
+{{ printf "confluent.controlcenter.kafka.source.sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";" $value.username $value.password }}
+{{- else }}
+{{ printf "confluent.controlcenter.kafka.source.%s" $val }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- $_ := unset $ "kafkaDependency" }}
+{{- end }}
+{{- end }}

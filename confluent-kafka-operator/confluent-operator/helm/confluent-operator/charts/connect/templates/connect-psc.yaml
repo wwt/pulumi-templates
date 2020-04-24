@@ -31,27 +31,14 @@ spec:
       shared:
       - name: connect.properties
         value: |2
-          # Start kafka security
-          {{- include "connect.kafka-config" . | indent 10 }}
-          # End kafka Security
-          
-          # Start Producer security
-          {{- include "connect.producer-config" . | indent 10 }}
-          # End Producer security
-
-          # Start consumer security
-          {{- include "connect.consumer-config" . | indent 10 }}
-          # End consumer security
-
+          config.providers=file
+          config.providers.file.class=org.apache.kafka.common.config.provider.FileConfigProvider
+{{ include "connect.kafka-config" . | indent 10 }}
+{{ include "connect.producer-config" . | indent 10 }}
+{{ include "connect.consumer-config" . | indent 10 }}
           {{- if .Values.dependencies.interceptor.enabled }}
-
-          # Start producer interceptor security
-          {{- include "connect.producer-interceptor-config" . | indent 10 }}
-          # End producer interceptor security
-
-          # Start consumer interceptor security
-          {{- include "connect.consumer-interceptor-config" . | indent 10 }}
-          # End consumer interceptor security
+{{ include "connect.producer-interceptor-config" . | indent 10 }}
+{{ include "connect.consumer-interceptor-config" . | indent 10 }}
           {{- end }}
           confluent.topic.replication.factor={{ include  "confluent-operator.replication_count" $ }}
           group.id={{ $.Release.Namespace }}.{{ $.Values.name }}
@@ -69,14 +56,12 @@ spec:
           key.converter.schemas.enable=false
           value.converter.schemas.enable=false
           {{- end }}
-          
           offset.storage.topic={{ $.Release.Namespace }}.{{ $.Values.name }}-offsets
           offset.storage.replication.factor={{ include  "confluent-operator.replication_count" $ }}
           config.storage.topic={{ $.Release.Namespace }}.{{ $.Values.name }}-configs
           config.storage.replication.factor={{ include  "confluent-operator.replication_count" $ }}
           status.storage.topic={{ $.Release.Namespace }}.{{ $.Values.name }}-status
           status.storage.replication.factor={{ include  "confluent-operator.replication_count" $ }}
-
           offset.flush.interval.ms=10000
           plugin.path=/usr/share/java,/usr/share/confluent-hub-components
           {{- if .Values.tls.enabled }}
@@ -87,17 +72,23 @@ spec:
           {{- end }}
           {{- if .Values.tls.cacerts }}
           listeners.https.ssl.truststore.location=/tmp/truststore.jks
-          listeners.https.ssl.truststore.password=mystorepassword
+          listeners.https.ssl.truststore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
           {{- end }}
           listeners.https.ssl.keystore.location=/tmp/keystore.jks
-          listeners.https.ssl.keystore.password=mystorepassword
-          listeners.https.ssl.key.password=mystorepassword
+          listeners.https.ssl.keystore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
+          listeners.https.ssl.key.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
           # End REST endpoint TLS configuration
           {{- else }}
           listeners=http://0.0.0.0:9083,http://0.0.0.0:8083
           {{- end }}
           request.timeout.ms=20000
           retry.backoff.ms=500
+{{ include "confluent-operator.cp-mds-config" . | indent 10 }}
+          {{ if .Values.global.authorization.rbac.enabled }}
+          confluent.metadata.http.auth.credentials.provider=BASIC
+          rest.servlet.initializor.classes=io.confluent.common.security.jetty.initializer.InstallBearerOrBasicSecurityHandler
+          rest.extension.classes=io.confluent.connect.security.ConnectSecurityExtension
+          {{- end }}
 
       - name: log4j.properties
         value: |2
@@ -106,7 +97,6 @@ spec:
           log4j.appender.stdout.layout=org.apache.log4j.EnhancedPatternLayout
           log4j.appender.stdout.layout.ConversionPattern=[%p] %d [%t] %c %M - %m%n
           log4j.rootLogger=INFO, stdout
-
           log4j.logger.org.apache.zookeeper=ERROR, stdout
           log4j.logger.org.I0Itec.zkclient=ERROR, stdout
           log4j.logger.org.reflections=ERROR, stdout
@@ -116,6 +106,9 @@ spec:
 
           disk.data=/mnt/log
           service.name={{ $.Values.name }}
+      {{- $_ := set $ "tlsEnable" .Values.tls.jmxTLS }}
+      {{- $_ := set $ "authType" .Values.tls.jmxAuthentication.type }}
+{{ include "confluent-operator.jolokia-security-configs" . | indent 6 }}
 
       - name: jvm.config
         value: |2
@@ -124,7 +117,6 @@ spec:
           -Xms {{- $.Values.jvmConfig.heapSize }}
           -XX:+UnlockExperimentalVMOptions
           -XX:+UseCGroupMemoryLimitForHeap
-          
           -server
           -XX:MetaspaceSize=96m
           -XX:+UseG1GC
@@ -135,29 +127,31 @@ spec:
           -XX:MinMetaspaceFreeRatio=50
           -XX:MaxMetaspaceFreeRatio=80
           -Djava.awt.headless=true
-
           -XX:ParallelGCThreads=1
           -XX:ConcGCThreads=1
-
           -Dcom.sun.management.jmxremote=true
           -Dcom.sun.management.jmxremote.authenticate=false
-          -Dcom.sun.management.jmxremote.ssl=false
           -Dcom.sun.management.jmxremote.local.only=false
           -Dcom.sun.management.jmxremote.rmi.port=7203
           -Dcom.sun.management.jmxremote.port=7203
-
           {{- if and .Values.dependencies.schemaRegistry.enabled .Values.dependencies.schemaRegistry.tls.enabled }}
           {{- $_ := set $ "tlsEnable" .Values.dependencies.schemaRegistry.tls.enabled }}
           {{- $_ := set $ "authType" .Values.dependencies.schemaRegistry.tls.authentication.type }}
-          {{- include "confluent-operator.jvm-security-configs" . | indent 10 }}
+          {{- else }}
+          {{- $_ := set $ "tlsEnable" false }}
+          {{- $_ := set $ "authType" "" }}
           {{- end }}
+          {{- $_ := set $ "jmxTLSEnable" .Values.tls.jmxTLS }}
+          {{- $_ := set $ "jmxAuthType" .Values.tls.jmxAuthentication.type }}
+{{ include "confluent-operator.jvm-security-configs" . | indent 10 }}
+{{ include "confluent-operator.jmx-security-configs" . | indent 10 }}
 
           -XX:+PrintFlagsFinal
           -XX:+UnlockDiagnosticVMOptions
       - name: admin.properties
         value: |2
           {{- $_ := set $ "kafkaDependency" .Values.dependencies.kafka }}
-          {{ include "confluent-operator.kafka-client-security" . | indent 10 }}
+{{ include "confluent-operator.kafka-client-security" . | indent 10 }}
     pod_annotations:
     {{- include "confluent-operator.annotations" . | indent 6 }}
     {{- include "confluent-operator.psc-init-container" . | indent 4 }}
@@ -174,22 +168,12 @@ spec:
       rack:
         topology: {{ $.Values.rack.topology }}
       {{- end }}
-      {{- if .Values.tls.enabled }}
-      readiness_probe:
-        exec:
-          command: 
-          - curl
-          - http://localhost:9083
-        initial_delay_seconds: 30
-        timeout_seconds: 10
-      {{- else }}
       readiness_probe:
         http:
-          path: /
+          path: /v1/metadata/id
           port: 9083
         initial_delay_seconds: 10
         timeout_seconds: 10
-      {{- end }}
 {{- if .Values.global.pod }}      
 {{ include "confluent-operator.psc-pod-security-config" . | trim | indent 4 }}
 {{- end }}
@@ -234,5 +218,5 @@ spec:
     {{- include "confluent-operator.psc-version" . | indent 4 }}
   {{- if empty $.Values.name }}
   {{- $_ := required "Connect Cluster name is required" $.Values.name }}
-  {{- end }}  
+  {{- end }}
   type: {{ $.Values.name }}

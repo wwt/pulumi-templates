@@ -7,3 +7,4 @@ metadata:
 type: Opaque
 data:
   apikeys.json : {{ include "confluent-operator.apikeys" . | b64enc }}
+  jksPassword.txt: {{ (printf "jksPassword=%s" .Values.tls.jksPassword) | b64enc }}

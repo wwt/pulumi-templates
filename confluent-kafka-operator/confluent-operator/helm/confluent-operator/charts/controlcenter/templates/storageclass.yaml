@@ -1,3 +1,4 @@
+{{- if and .Values.global.provider.storage (not .Values.storageClassName) }}
 {{- $_ := required "Name of controlcenter is required." $.Values.name }}
 apiVersion: v1
 items:
@@ -10,10 +11,16 @@ items:
 {{ toYaml $.Values.global.provider.storage.annotations | trim | indent 6 }}
     name: {{ $.Values.name }}-standard-ssd-{{ $e }}
     namespace: ""
+  {{- if hasKey $.Values.global.provider.storage "parameters" }}
   parameters:
 {{ toYaml $.Values.global.provider.storage.parameters | trim | indent 4 }}
+  {{- end }}
+  {{- if hasKey $.Values.global.provider.storage "provisioner" }}
   provisioner: {{ $.Values.global.provider.storage.provisioner }}
+  {{- end }}
+  {{- if hasKey $.Values.global.provider.storage "reclaimPolicy" }}
   reclaimPolicy: {{ $.Values.global.provider.storage.reclaimPolicy }}
+  {{- end }}
   {{- if hasKey $.Values.global.provider.storage "mountOptions" }}
   {{- if (gt (len $.Values.global.provider.storage.mountOptions) 0) }}
   mountOptions:
@@ -33,3 +40,4 @@ items:
   {{- end }}
 {{- end }}
 kind: List
+{{- end }}

@@ -9,7 +9,7 @@ license: ""
 name: controlcenter
 image:
   repository: confluentinc/cp-enterprise-control-center-operator
-  tag: 5.4.1.0
+  tag: 5.5.0.0
 ## Pod resources
 ##
 resources:
@@ -24,6 +24,13 @@ resources:
 ##
 jvmConfig:
   heapSize: 4G
+
+## User can set storageClassName to provide a user-created storage class. This setting at component-level takes precedence over the global-level.
+## If storageClassName is left blank ("") and global.provider.storage is empty, the default storage class will be used.
+## If storageClassName is left blank ("") and global.provider.storage is not empty, storage classes will be created
+## and used, one per availability zone.
+storageClassName: ""
+
 ## Volume size
 ##
 volume:
@@ -38,9 +45,13 @@ tls:
   port: 443
   authentication:
     type: ""
+  jmxTLS: false
+  jmxAuthentication:
+    type: ""
+  jksPassword: mystorepassword
+  cacerts: |-
   fullchain: |-
   privkey: |-
-  cacerts: |-
 
 ## External Access
 ##
@@ -149,7 +160,12 @@ dependencies:
     # If unspecified, falls back to the the c3KafkaCluster's bootstrapEndpoint configurations
     kafkaBootstrapEndpoint: ""
     timeout: 15000
-
+  ## Metadata service for CP RBAC configuration
+  ##
+  mds:
+    authentication:
+      username: ""
+      password: ""
 
 ## C3 authentication
 ##
@@ -165,6 +181,7 @@ auth:
   ldap:
     enabled: false
     nameOfGroupSearch: c3users
+    nameOfRestrictedGroup: c3restricted
     property: {}
     # property:
     #  useLdaps : "true"
@@ -228,8 +245,8 @@ disableHostPort: true
 ## Inject pod-level annotations
 ## Any changes on this field will trigger rolling restart
 ##
-alphaPodAnnotations: {}
-#alphaPodAnnotations:
+podAnnotations: {}
+#podAnnotations:
 #  string: "value"
 #  number: "1"
 #  boolean: "true"

@@ -108,8 +108,8 @@ Distribution of pods placement based on zones
 config.value.checksum: {{ include "confluent-operator.generate-sha256sum" .  | trim }}
 prometheus.io/scrape: "true"
 prometheus.io/port: "7778"
-{{- if .Values.alphaPodAnnotations }}
-{{- range $key, $value := .Values.alphaPodAnnotations }}
+{{- if .Values.podAnnotations }}
+{{- range $key, $value := .Values.podAnnotations }}
 {{ $key }}: {{ $value | quote }}
 {{- end }}
 {{- end }}
@@ -117,9 +117,9 @@ prometheus.io/port: "7778"
 
 {{/* Generate pod annotations for CR */}}
 {{- define "confluent-operator.cr-annotations" }}
-{{- if .Values.alphaPodAnnotations }}
+{{- if .Values.podAnnotations }}
 podAnnotations:
-{{- range $key, $value := .Values.alphaPodAnnotations }}
+{{- range $key, $value := .Values.podAnnotations }}
   {{ $key }}: {{ $value | quote }}
 {{- end }}
 {{- end }}
@@ -219,6 +219,8 @@ Configure Kafka client security configurations
 */}}
 {{- define "confluent-operator.kafka-client-security" }}
 {{- $protocol :=  (include "confluent-operator.kafka-external-advertise-protocol" .) | trim  }}
+{{ printf "config.providers=file" }}
+{{ printf "config.providers.file.class=org.apache.kafka.common.config.provider.FileConfigProvider" }}
 {{- if contains "SASL" $protocol }}
 {{ printf "security.protocol=%s" $protocol }} 
 {{ printf "sasl.mechanism=PLAIN" }}
@@ -227,8 +229,8 @@ Configure Kafka client security configurations
 {{- if contains "2WAYSSL" $protocol }}
 {{ printf "security.protocol=%s" "SSL" }}
 {{ printf "ssl.keystore.location=/tmp/keystore.jks" }}
-{{ printf "ssl.keystore.password=mystorepassword" }}
-{{ printf "ssl.key.password=mystorepassword" }}
+{{ printf "ssl.keystore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}" }}
+{{ printf "ssl.key.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}" }}
 {{- else }}
 {{ printf "security.protocol=%s" $protocol }} 
 {{- end }}
@@ -236,7 +238,7 @@ Configure Kafka client security configurations
 {{- if .Values.tls.cacerts }}
 {{- if or (or (eq $protocol "SSL") (eq $protocol "SASL_SSL") ) (eq $protocol "2WAYSSL") }}
 {{ printf "ssl.truststore.location=/tmp/truststore.jks"}}
-{{ printf "ssl.truststore.password=mystorepassword" }}
+{{ printf "ssl.truststore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}" }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -361,7 +363,7 @@ pod_security_context:
 {{/*
 */}}
 {{- define "confluent-operator.cr-config-overrides"}}
-{{- if or .Values.configOverrides.server .Values.configOverrides.jvm }}
+{{- if or .Values.configOverrides.server .Values.configOverrides.jvm .Values.configOverrides.log4j }}
 configOverrides:
 {{- if .Values.configOverrides.server }}
   server:
@@ -370,6 +372,10 @@ configOverrides:
 {{- if .Values.configOverrides.jvm }}
   jvm:
 {{ toYaml .Values.configOverrides.jvm | trim | indent 2 }}
+{{- end }}
+{{- if .Values.configOverrides.log4j }}
+  log4j:
+{{ toYaml .Values.configOverrides.log4j | trim | indent 2 }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -418,12 +424,12 @@ JVM security configurations
 {{- $_ := required "Private key pem cannot be empty." .Values.tls.privkey }}
 {{- if (eq  $authenticationType "tls") }}
 -Djavax.net.ssl.keyStore=/tmp/keystore.jks
--Djavax.net.ssl.keyStorePassword=mystorepassword
+-Djavax.net.ssl.keyStorePassword=<<keystorepassword>>
 -Djavax.net.ssl.keyStoreType=pkcs12
 {{- end }}
 {{- if .Values.tls.cacerts }}
 -Djavax.net.ssl.trustStore=/tmp/truststore.jks
--Djavax.net.ssl.trustStorePassword=mystorepassword
+-Djavax.net.ssl.trustStorePassword=<<keystorepassword>>
 {{- end }}
 {{- end }}
 {{- end }}
@@ -500,7 +506,7 @@ local k8sClusterDomain = {{ $domainName | quote }};
     },
 {{- end }}
 {{- if eq .Chart.Name "ksql"  }}
-  'ksql-server.properties': {
+  'ksqldb-server.properties': {
       'host.name': componentEndpoint(componentName, podNamespace, podName, k8sClusterDomain),
     },
 {{- end }}
@@ -546,5 +552,131 @@ requests:
 {{- if .Values.resources.limits }}
 limits:
 {{ toYaml .Values.resources.limits | trim | indent 2 }}
+{{- end }}
+{{- end }}
+
+{{/*
+Confluent Component Jolokia Security Settings
+*/}}
+{{- define "confluent-operator.jolokia-security-configs" }}
+{{- $authenticationType := $.authType }}
+{{- $tls := $.tlsEnable }}
+{{- if $tls }}
+{{- $_ := required "Fullchain PEM cannot be empty" .Values.tls.fullchain }}
+{{- $_ := required "Private key pem cannot be empty." .Values.tls.privkey }}
+- name: jolokia.config
+  {{- if eq $authenticationType "tls" }}
+  {{- $_ := required "Cacert pem cannot be empty for jmx mtls." .Values.tls.cacerts}}
+  value: protocol=https,useSslClientAuthentication=true,keystore=/tmp/jolokia-keystore.jks,keystorePassword=<<keystorepassword>>
+  {{- else }}
+  value: protocol=https,useSslClientAuthentication=false,keystore=/tmp/jolokia-keystore.jks,keystorePassword=<<keystorepassword>>
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+JMX security configurations
+*/}}
+{{- define "confluent-operator.jmx-security-configs"}}
+{{- $jmxAuth := $.jmxAuthType }}
+{{- $jmxTLS := $.jmxTLSEnable }}
+{{- $depTLS := $.tlsEnable }}
+{{- $depAuth := $.authType }}
+
+{{- $tls := and $depTLS (not (eq  $depAuth "tls")) }}
+{{- $setKeystore := and $jmxTLS (or (not $depTLS) $tls ) }}
+{{- $setTruststore := and $jmxTLS (not $depTLS) }}
+
+{{- if $setKeystore }}
+{{- $_ := required "Fullchain PEM cannot be empty" .Values.tls.fullchain }}
+{{- $_ := required "Private key pem cannot be empty." .Values.tls.privkey }}
+-Djavax.net.ssl.keyStore=/tmp/keystore.jks
+-Djavax.net.ssl.keyStorePassword=<<keystorepassword>>
+-Djavax.net.ssl.keyStoreType=pkcs12
+{{- end }}
+
+{{- if and $setTruststore .Values.tls.cacerts }}
+-Djavax.net.ssl.trustStore=/tmp/truststore.jks
+-Djavax.net.ssl.trustStorePassword=<<keystorepassword>>
+{{- end }}
+
+{{- if $jmxTLS }}
+-Dcom.sun.management.jmxremote.ssl=true
+-Dcom.sun.management.jmxremote.registry.ssl=true
+{{- if eq $jmxAuth "tls" }}
+{{- $_ := required "Cacert pem cannot be empty for jmx mtls." .Values.tls.cacerts}}
+-Dcom.sun.management.jmxremote.ssl.need.client.auth=true
+{{- else }}
+-Dcom.sun.management.jmxremote.ssl.need.client.auth=false
+{{- end }}
+{{- else }}
+-Dcom.sun.management.jmxremote.ssl=false
+{{- end }}
+{{- end }}
+
+{{/*
+Confluent cert validation
+*/}}
+{{- define "confluent-operator.cert-required" }}
+{{- if or (or .Values.tls.enabled .Values.tls.jmxTLS) }}
+{{- $_ := required "Fullchain PEM cannot be empty" .Values.tls.fullchain }}
+{{- $_ := required "Private key pem cannot be empty." .Values.tls.privkey }}
+{{- $_ := required "jksPassword cannot be empty" .Values.tls.jksPassword }}
+{{- end }}
+{{- end }}
+
+{{/*
+Confluent mds credential
+*/}}
+{{- define "confluent-operator.mds-credential-secret" }}
+{{- if .Values.global.authorization.rbac.enabled }}
+{{- $_ := required "MDS username required" .Values.dependencies.mds.authentication.username }}
+{{- $_ := required "MDS password required" .Values.dependencies.mds.authentication.password }}
+mds.txt: {{ (printf "credential=%s:%s" .Values.dependencies.mds.authentication.username .Values.dependencies.mds.authentication.password) | b64enc }}
+{{- end }}
+{{- end }}
+
+{{/*
+ MDS basic configuration
+*/}}
+{{- define "confluent-operator.cp-mds-config" }}
+{{- if .Values.global.authorization.rbac.enabled }}
+{{- $_ := required "MDS endpoint required e.g http|s://<kafka_endpoint>" .Values.global.dependencies.mds.endpoint }}
+{{- $_ := required "MDS token public key required" .Values.global.dependencies.mds.publicKey }}
+confluent.metadata.bootstrap.server.urls={{ .Values.global.dependencies.mds.endpoint }}
+confluent.metadata.basic.auth.user.info=${file:/mnt/secrets/mds.txt:credential}
+public.key.path=/mnt/sslcerts/mdsPublicKey.pem
+{{- end }}
+{{- end }}
+
+{{/*
+ MDS public key configuration
+*/}}
+{{- define "confluent-operator.mds-publickey" }}
+{{- if .Values.global.authorization.rbac.enabled }}
+{{- $_ := required "MDS public key cannot be empty" .Values.global.dependencies.mds.publicKey }}
+mdsPublicKey.pem: {{ .Values.global.dependencies.mds.publicKey | b64enc }}
+{{- end }}
+{{- end }}
+
+{{/*
+ RBAC SASL OUATH Configurations
+*/}}
+{{- define "confluent-operator.rbac-sasl-oauth-config" }}
+{{- $_ := required "MDS endpoint required e.g http|s://<kafka_endpoint>" .Values.global.dependencies.mds.endpoint }}
+{{- $_ := required "MDS username required" .Values.dependencies.mds.authentication.username }}
+{{- $_ := required "MDS password required" .Values.dependencies.mds.authentication.password }}
+{{- $mdsEndpoint := $.Values.global.dependencies.mds.endpoint }}
+{{- $mdsUserName := $.Values.dependencies.mds.authentication.username }}
+{{- $mdsPassword := $.Values.dependencies.mds.authentication.password }}
+{{ $kafka := $.kafkaDependency }}
+{{- $class := "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule" }}
+{{ printf "sasl.jaas.config=%s required metadataServerUrls=\"%s\" username=\"%s\" password=\"%s\";" $class $mdsEndpoint $mdsUserName $mdsPassword }}
+sasl.login.callback.handler.class=io.confluent.kafka.clients.plugins.auth.token.TokenUserLoginCallbackHandler
+sasl.mechanism=OAUTHBEARER
+{{- if $kafka.tls.enabled  }}
+security.protocol=SASL_SSL
+{{- else }}
+security.protocol=SASL_PLAINTEXT
 {{- end }}
 {{- end }}

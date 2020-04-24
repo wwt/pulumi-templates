@@ -17,20 +17,21 @@ Configure JVM configuration for SchemaRegistry.
 -XX:MinMetaspaceFreeRatio=50
 -XX:MaxMetaspaceFreeRatio=80
 -Djava.awt.headless=true
-
 -XX:ParallelGCThreads=1
 -XX:ConcGCThreads=1
-
 -Dcom.sun.management.jmxremote=true
 -Dcom.sun.management.jmxremote.authenticate=false
--Dcom.sun.management.jmxremote.ssl=false
 -Dcom.sun.management.jmxremote.local.only=false
 -Dcom.sun.management.jmxremote.rmi.port=7203
 -Dcom.sun.management.jmxremote.port=7203
-
 -XX:+PrintFlagsFinal
 -XX:+UnlockDiagnosticVMOptions
-
+{{- $_ := set $ "tlsEnable" false }}
+{{- $_ := set $ "authType" "" }}
+{{- $_ := set $ "jmxTLSEnable" .Values.tls.jmxTLS }}
+{{- $_ := set $ "jmxAuthType" .Values.tls.jmxAuthentication.type }}
+{{- include "confluent-operator.jvm-security-configs" . }}
+{{- include "confluent-operator.jmx-security-configs" . }}
 {{- end }}
 
 {{- define "schemaregistry.kafka-config" }}

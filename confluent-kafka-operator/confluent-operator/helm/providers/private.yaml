@@ -13,13 +13,6 @@ global:
          ## For the private cloud, use kubernetes node labels as appropriate
          zones:
           - myzones
-    ##  more information can be found here
-    ##  https://kubernetes.io/docs/concepts/storage/storage-classes/
-    storage:
-      ## Use Retain if you want to persist data after CP cluster has been uninstalled
-      reclaimPolicy: Delete
-      provisioner: ##FILL_IN##
-      parameters: {}
     ##
     ## Docker registry endpoint where Confluent Images are available.
     ##
@@ -31,6 +24,16 @@ global:
     plain:
       username: test
       password: test123
+  authorization:
+    rbac:
+      enabled: false
+    simple:
+      enabled: false
+    superUsers: []
+  dependencies:
+    mds:
+      endpoint: ""
+      publicKey: ""
 ## Zookeeper cluster
 ##
 zookeeper:

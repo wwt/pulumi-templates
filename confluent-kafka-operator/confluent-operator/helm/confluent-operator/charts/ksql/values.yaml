@@ -10,8 +10,8 @@ replicas: 2
 ## Image information
 ##
 image:
-  repository: confluentinc/cp-ksql-server-operator
-  tag: 5.4.1.0
+  repository: confluentinc/cp-ksqldb-server-operator
+  tag: 5.5.0.0
 ## Pod termination grace-period
 ##
 terminationGracePeriodSeconds: 60
@@ -29,18 +29,28 @@ resources:
 jvmConfig:
   heapSize: 4G
 
+## User can set storageClassName to provide a user-created storage class. This setting at component-level takes precedence over the global-level.
+## If storageClassName is left blank ("") and global.provider.storage is empty, the default storage class will be used.
+## If storageClassName is left blank ("") and global.provider.storage is not empty, storage classes will be created
+## and used, one per availability zone.
+storageClassName: ""
+
 volume:
   data: 1Gi
 
 ## Endpoint Security Configuration
 tls:
- enabled: false
- port: 443
- authentication:
-  type: ""
- cacerts: |-
- fullchain: |-
- privkey: |-
+  enabled: false
+  port: 443
+  authentication:
+    type: ""
+  jmxTLS: false
+  jmxAuthentication:
+    type: ""
+  jksPassword: mystorepassword
+  cacerts: |-
+  fullchain: |-
+  privkey: |-
 
 ## External Access
 ##
@@ -104,6 +114,12 @@ dependencies:
       enabled: false
       authentication:
         type: ""
+  ## Metadata service for CP RBAC configuration
+  ##
+  mds:
+    authentication:
+      username: ""
+      password: ""
 
 
 ## Pod distribution on nodes with given key and values
@@ -133,8 +149,8 @@ disableHostPort: true
 ## Inject pod-level annotations
 ## Any changes on this field will trigger rolling restart
 ##
-alphaPodAnnotations: {}
-#alphaPodAnnotations:
+podAnnotations: {}
+#podAnnotations:
 #  string: "value"
 #  number: "1"
 #  boolean: "true"

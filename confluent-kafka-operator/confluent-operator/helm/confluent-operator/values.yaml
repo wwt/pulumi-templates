@@ -24,22 +24,6 @@ global:
         ## If kubernetes is deployed in single availability zone then specify appropriate values
         ## For the private cloud, use kubernetes node labels as appropriate
         zones: []
-    storage:
-      ## https://kubernetes.io/docs/concepts/storage/storage-classes/
-      ##
-      provisioner: ""
-      ## Parameters for storage-class. Please go through
-      ## https://kubernetes.io/docs/concepts/storage/storage-classes/ to fill parameters
-      ## For multi zone deployment, use zones otherwise use zone parameter as appropriate
-      parameters: {}
-      reclaimPolicy: Delete
-      mountOptions: []
-      volumeBindingMode: ""
-      allowedTopologies: []
-      ## Add annotations in storage-class resources
-      ##
-      annotations:
-        storageclass.beta.kubernetes.io/is-default-class: "false"
     registry:
       ## Docker registry endpoint where Confluent Images are available.
       ##
@@ -54,6 +38,11 @@ global:
         ## Docker login password
         ##
         password: ""
+  ## User can set storageClassName to provide a user-created storage class. This setting at component-level takes precedence over the global-level.
+  ## If storageClassName is left blank ("") and global.provider.storage is empty, the default storage class will be used.
+  ## If storageClassName is left blank ("") and global.provider.storage is not empty, storage classes will be created
+  ## and used, one per availability zone.
+  storageClassName: ""
   ## All containers to run as non root with specific UID/GUID
   ## For OpenShift enable randomUID to true. If randomUID is false, then you must use right UID/GUID and configure confluent-scc.yaml accordingly.
   ## The scripts can be found at scripts/openshift/confluent-scc.yaml
@@ -84,7 +73,32 @@ global:
   initContainer:
     image:
       repository: confluentinc/cp-init-container-operator
-      tag: 5.4.1.0
+      tag: 5.5.0.0
+  ##
+  ## Authorization configuration
+  ##
+  authorization:
+    rbac:
+      enabled: false
+    simple:
+      enabled: false
+    ##
+    ##  super users
+    ##
+    superUsers: []
+    #superUsers
+    #- User:user1
+    #- User:user2
+  ##
+  ## Metadata Service configuration for all supported CP component
+  ##
+  dependencies:
+    mds:
+     ## The endpoint of metadata service used by CP component
+     ## If kafka is deployed with external access: http|s://<kafka_bootstrap_endpoint>
+     ## If kafka is deployed without external access: http|s://<kafka.name>:8091|8090
+     endpoint: ""
+     publicKey: ""
 
 operator:
   enabled: false
