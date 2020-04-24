@@ -4,8 +4,8 @@
         "@types/node": "^12.12.17"
     },
     "dependencies": {
-        "@pulumi/kubernetes": "^1.4.5",
-        "@pulumi/pulumi": "^1.9.0",
-        "@pulumi/aws": "^1.18.0"
+        "@pulumi/aws": "^2.1.0",
+        "@pulumi/kubernetes": "^2.0.0",
+        "@pulumi/pulumi": "^2.0.0"
     }
 }

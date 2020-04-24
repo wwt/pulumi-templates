@@ -44,7 +44,9 @@ export const kubeconfig = cluster.kubeconfig;
 export const vpcZones = vpc.privateSubnetIds.then(function(subnetIds) {
     return subnetIds.map(function (id) {
         return id.apply(id => {
-            return aws.ec2.getSubnet({id: id}).availabilityZone;
+            return aws.ec2.getSubnet({id: id}).then(result => {
+                return result.availabilityZone
+            });
         });
     });
 });
