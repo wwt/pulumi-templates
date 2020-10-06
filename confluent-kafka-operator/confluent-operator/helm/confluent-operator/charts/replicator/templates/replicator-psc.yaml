@@ -1,13 +1,16 @@
 {{- $_ := set $ "kreplicas" .Values.dependencies.kafka.brokerCount }}
-{{- $username := $.Values.global.sasl.plain.username }}
-{{- $password := $.Values.global.sasl.plain.password }}
 {{- $_ := required "Namespace is required" $.Release.Namespace }}
 {{- $_ := required "Replicator name is required" $.Values.name }}
 {{- $_ := required "Kafka Cluster bootstrap endpoint is required" $.Values.dependencies.kafka.bootstrapEndpoint }}
 {{- $_ := required "Replicator replica count is required" $.Values.replicas }}
 {{- $_ := required "Docker Repository FQDN path is required" $.Values.global.provider.registry.fqdn }}
+{{- if and (not .Values.tls.enabled) .Values.tls.internalTLS }}
+{{- fail "tls must be enabled for internalTLS to be enabled" }}
+{{- end }}
 {{- $k8sInternalDomain := default "svc.cluster.local" $.Values.global.provider.kubernetes.clusterDomain }}
 {{- $replicas := $.Values.replicas | int }}
+{{- $_ := set $ "telemetrySupported" false }}
+
 apiVersion: operator.confluent.cloud/v1
 kind: PhysicalStatefulCluster
 metadata:
@@ -21,6 +24,7 @@ spec:
     {{- include "confluent-operator.hostPort" . }}
   cluster_id: {{ include "confluent-operator.cluster-id" . }}
   common:
+{{- include "confluent-operator.affinity" (dict "Values" .Values "isPSC" "true") | indent 4 }}
     config:
       pod:
       - config:
@@ -31,13 +35,14 @@ spec:
       shared:
       - name: replicator.properties
         value: |2
-          config.providers=file
-          config.providers.file.class=org.apache.kafka.common.config.provider.FileConfigProvider
+
+{{ include "confluent-operator.config-file-provider" . | indent 10 }}
 {{ include "replicator.kafka-config" . | indent 10 }}
 {{ include "replicator.producer-config" . | indent 10 }}
 {{ include "replicator.consumer-config" . | indent 10 }}
 {{ include "confluent-operator.cp-mds-config" . | indent 10 }}
           {{- if .Values.global.authorization.rbac.enabled }}
+          connector.client.config.override.policy=All
           confluent.metadata.http.auth.credentials.provider=BASIC
           rest.servlet.initializor.classes=io.confluent.common.security.jetty.initializer.InstallBearerOrBasicSecurityHandler
           rest.extension.classes=io.confluent.connect.security.ConnectSecurityExtension
@@ -98,14 +103,12 @@ spec:
       {{- $_ := set $ "tlsEnable" .Values.tls.jmxTLS }}
       {{- $_ := set $ "authType" .Values.tls.jmxAuthentication.type }}
 {{ include "confluent-operator.jolokia-security-configs" . | indent 6 }}
-     
+
       - name: jvm.config
         value: |2
 
           -Xmx {{- $.Values.jvmConfig.heapSize }}
           -Xms {{- $.Values.jvmConfig.heapSize }}
-          -XX:+UnlockExperimentalVMOptions
-          -XX:+UseCGroupMemoryLimitForHeap
           -server
           -XX:MetaspaceSize=96m
           -XX:+UseG1GC
@@ -116,6 +119,7 @@ spec:
           -XX:MinMetaspaceFreeRatio=50
           -XX:MaxMetaspaceFreeRatio=80
           -Djava.awt.headless=true
+          -Djdk.tls.ephemeralDHKeySize=2048
           -XX:ParallelGCThreads=1
           -XX:ConcGCThreads=1
           -Dcom.sun.management.jmxremote=true
@@ -133,13 +137,18 @@ spec:
 {{ include "confluent-operator.jmx-security-configs" . | indent 10 }}
       - name: admin.properties
         value: |2
-          {{- $_ := set $ "kafkaDependency" .Values.dependencies.kafka }}
+{{ include "confluent-operator.config-file-provider" . | indent 10 }}
+{{- $_ := set $ "kafkaDependency" .Values.dependencies.kafka }}
 {{ include "confluent-operator.kafka-client-security" . | indent 10 }}
     pod_annotations:
     {{- include "confluent-operator.annotations" . | indent 6 }}
     {{- include "confluent-operator.psc-init-container" . | indent 4 }}
     container:  
       image: {{ $.Values.image.repository -}}:{{- $.Values.image.tag }}
+      {{- include "confluent-operator.psc-mounted-secrets" . | indent 6 }}
+      {{- if .Values.serviceAccountName }}
+      service_account: {{ .Values.serviceAccountName }}
+      {{- end }}
       termination_grace_period_seconds: {{ $.Values.terminationGracePeriodSeconds | default 60 }}
       {{- if $.Values.nodeAffinity }}
       node_affinity:
@@ -194,7 +203,6 @@ spec:
       {{- end }}
     {{- $_ := set $ "name" $.Values.name }}
     {{- $_ := set $ "replicas" $.Values.replicas }}
-    placement: {{ include  "confluent-operator.pod-distribution" . }}
     replicas: {{ $replicas }}
     resources:
 {{- include "confluent-operator.resource-requirements" . | indent 6 }}

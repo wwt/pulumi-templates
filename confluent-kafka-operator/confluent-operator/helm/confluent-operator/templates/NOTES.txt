@@ -30,6 +30,9 @@ Definition (CRD) (for Kafka and Zookeeper) and one controller for creating other
 
 Zookeeper cluster is deployed through CR.
 
+  0. List of Deprecated Features (if any)
+     {{ include "confluent-operator.deprecated-list" .Values.zookeeper }}
+
   1. Validate if Zookeeper Custom Resource (CR) is created
 
      kubectl get zookeeper -n {{ .Release.Namespace }} | grep {{ .Values.zookeeper.name }}
@@ -57,6 +60,8 @@ Zookeeper cluster is deployed through CR.
 
 Kafka Cluster is deployed to kubernetes through CR Object
 
+  0. List of Deprecated Features (if any)
+   {{ include "confluent-operator.deprecated-list" .Values.kafka }}
 
   1. Validate if Kafka Custom Resource (CR) is created
 
@@ -190,6 +195,9 @@ EOF
 
 ControlCenter is deployed through PSC
 
+   0. List of Deprecated Features (if any)
+      {{ include "confluent-operator.deprecated-list" .Values.controlcenter }}
+
    1. Validate if controlcenter is running
 
      kubectl get pods -n {{ .Release.Namespace }} | grep {{ $.Values.controlcenter.name }}
@@ -238,8 +246,11 @@ ControlCenter is deployed through PSC
 
        Connect Cluster Deployment
 
-Connect Cluster is deployed through PSC. To configure connnectors use ControlCenter or Use REST API to configure.
+Connect Cluster is deployed through PSC. To configure connectors use ControlCenter or Use REST API to configure.
 The Connect Cluster endpoint does not support authorization and must not be open for Internet Access.
+
+  0. List of Deprecated Features (if any)
+     {{ include "confluent-operator.deprecated-list" .Values.connect }}
 
   1. Validate if connect cluster is running
 
@@ -282,6 +293,9 @@ The Connect Cluster endpoint does not support authorization and must not be open
 Replicator Connect Cluster is deployed through PSC. To configure replicator connector use REST API to configure.
 The Replicator Connect Cluster endpoint does not support authorization and must not be open for Internet Access.
 
+  0. List of Deprecated Features (if any)
+     {{ include "confluent-operator.deprecated-list" .Values.replicator }}
+
   1. Validate if replicator cluster is running
 
      kubectl get pods -n {{ .Release.Namespace }} | grep {{ $.Values.replicator.name }}
@@ -321,6 +335,9 @@ The Replicator Connect Cluster endpoint does not support authorization and must 
 {{- if .Values.schemaregistry.enabled }}
 
 Schema Registry is deployed through PSC. Configure Schema Registry through REST Endpoint
+
+  0. List of Deprecated Features (if any)
+     {{ include "confluent-operator.deprecated-list" .Values.schemaregistry }}
 
   1. Validate if schema registry cluster is running
 
@@ -364,6 +381,9 @@ Schema Registry is deployed through PSC. Configure Schema Registry through REST 
       KSQL Deployment
 
 KSQL is deployed through PSC
+
+   0. List of Deprecated Features (if any)
+      {{ include "confluent-operator.deprecated-list" .Values.ksql }}
 
    1. Validate if ksql is running
 

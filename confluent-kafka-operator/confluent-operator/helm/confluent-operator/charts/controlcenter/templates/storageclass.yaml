@@ -1,4 +1,7 @@
 {{- if and .Values.global.provider.storage (not .Values.storageClassName) }}
+{{- if eq (len $.Values.global.provider.kubernetes.deployment.zones) 0 }}
+{{- fail "Provide at least 1 zone information for .Values.global.provider.kubernetes.deployment.zones " }}
+{{- end }}
 {{- $_ := required "Name of controlcenter is required." $.Values.name }}
 apiVersion: v1
 items:
@@ -36,6 +39,11 @@ items:
   {{- if (gt (len $.Values.global.provider.storage.allowedTopologies)  0) }}
   allowedTopologies:
 {{ toYaml $.Values.global.provider.storage.allowedTopologies | trim | indent 2 }}
+  {{- end }}
+  {{- end }}
+  {{- if hasKey $.Values.global.provider.storage "allowVolumeExpansion" }}
+  {{- if not (empty $.Values.global.provider.storage.allowVolumeExpansion) }}
+  allowVolumeExpansion: {{ $.Values.global.provider.storage.allowVolumeExpansion }}
   {{- end }}
   {{- end }}
 {{- end }}

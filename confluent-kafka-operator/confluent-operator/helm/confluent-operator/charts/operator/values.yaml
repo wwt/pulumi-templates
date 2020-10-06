@@ -21,7 +21,7 @@ publicKey: |-
 ##
 image:
   repository: confluentinc/cp-operator-service
-  tag: 0.364.0
+  tag: 0.419.0
   pullPolicy: Always
 ## Confluent Operator Cluster Access
 ## If true, operator only creates roles/rolebinding for the release namespace

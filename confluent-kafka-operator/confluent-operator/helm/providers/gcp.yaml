@@ -4,12 +4,6 @@ global:
   provider:
     name: gcp
     region: us-central1
-    kubernetes:
-       deployment:
-         ## If kubernetes is deployed in multi zone mode then specify availability-zones as appropriate
-         ## If kubernetes is deployed in single availability zone then specify appropriate values
-         zones:
-          - us-central1-a
     ## Docker registry endpoint where Confluent Images are available.
     ##
     registry:

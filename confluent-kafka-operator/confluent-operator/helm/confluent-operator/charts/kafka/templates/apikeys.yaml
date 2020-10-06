@@ -11,8 +11,7 @@ metadata:
 type: Opaque
 data:
   apikeys.json : {{ include "kafka.sasl_users" . | b64enc }}
-  global_sasl_plain_username: {{ .Values.global.sasl.plain.username | b64enc }}
-  global_sasl_plain_password: {{ .Values.global.sasl.plain.password | b64enc }}
+  {{- include "confluent-operator.global-sasl-secret" . | indent 2 }}
   {{- if .Values.tls.jksPassword}}
   jksPassword.txt: {{ (printf "jksPassword=%s" .Values.tls.jksPassword) | b64enc }}
   {{- end }}
@@ -21,4 +20,5 @@ data:
   {{- $_ := required "ldap credential connot be empty" .Values.services.mds.ldap.authentication.simple.credentials }}
   {{- $_ := required "ldap principal cannot be empty." .Values.services.mds.ldap.authentication.simple.principal }}
   ldap.txt: {{ (printf "credentials=%s\nprincipal=%s" .Values.services.mds.ldap.authentication.simple.credentials .Values.services.mds.ldap.authentication.simple.principal ) | b64enc }}
+  {{- include "kafka.mds-credential-secret" . | indent 2 }}
   {{- end }}

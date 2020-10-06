@@ -19,10 +19,7 @@ const baseTags = {
 // Create a VPC for our cluster.
 const vpc = new awsx.ec2.Vpc("kafka-vpc", {
     numberOfAvailabilityZones: numberOfAvailZones,
-    tags: {
-        ...baseTags,
-        Name: config.require("vpcName")
-    }
+    tags: Object.assign(baseTags, {Name: "kafka-vpc"})
 });
 
 // Create an EKS cluster with the given configuration.
@@ -37,16 +34,19 @@ const cluster = new eks.Cluster("kafka-cluster", {
     tags: baseTags
 });
 
-// Export the kubeconfig for cluster access
-export const kubeconfig = cluster.kubeconfig;
-
-// Export the vpc zones for use in the confluent operator aws provider config
-export const vpcZones = vpc.privateSubnetIds.then(function(subnetIds) {
-    return subnetIds.map(function (id) {
-        return id.apply(id => {
-            return aws.ec2.getSubnet({id: id}).then(result => {
-                return result.availabilityZone
-            });
-        });
-    });
+// Create a bucket to sink all of our messages to
+const kafkaBucket = new aws.s3.Bucket("stream-demo-kafka-bucket", {
+    forceDestroy: true,
+    tags: baseTags
 });
+
+export const bucketName = kafkaBucket.bucket
+// export const storageClassName = helper.getStorageClass(cluster);
+export const kubeconfig = cluster.kubeconfig; // create a stack export for kubeconfig
+// Export the vpc zones for use in the confluent operator aws provider config
+export const vpcZones = vpc.privateSubnetIds.then(subnetIds =>
+    subnetIds.map(id => id.apply(
+        id => aws.ec2.getSubnet({id}).then(result =>
+            result.availabilityZone)
+    ))
+);

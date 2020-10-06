@@ -14,7 +14,7 @@ name: kafka
 ##
 image:
   repository: confluentinc/cp-server-operator
-  tag: 5.5.0.0
+  tag: 6.0.0.0
 ## Pod resources configuration
 ##
 resources:
@@ -44,9 +44,16 @@ options:
     # value for super.users server property, takes form User:UserName;User:UserTwo;
     supers: ""
 ##
-## MDS service
+## Kafka Embedded Services
 ##
 services:
+  ## Rest Proxy configuration
+  ## Required when RBAC is enabled
+  ## username/password are mandatory field
+  restProxy:
+    authentication:
+      username: ""
+      password: ""
   mds:
     https: false
     ## Token KeyPair
@@ -77,27 +84,56 @@ jvmConfig:
 
 ## Pod termination grace-period
 ## Don't change this number as we run pre-hook that take cares of gracefully terminating the cluster
-terminationGracePeriodSeconds: 2147483647
+terminationGracePeriodSeconds: 100
 ## Only required if Kafka cluster needs external access
+## If Kafka cluster needs external access, enable one, and only one, of the following services [loadBalancer, nodePort, staticForPostBasedRouting, staticForHostBasedRouting].
 ##
+#### For loadBalancer based external access
 loadBalancer:
-  ## If use-case for Kafka-cluster is to access from out of kubernetes cluster then configured `enabled` to true.
   enabled: false
-  ## External will create public facing endpoints, setting this to internal will
+  ##[Required] External will create public facing endpoints, setting this to internal will
   ## create a private-facing ELB with VPC peering
   type: external
-  ## Add other annotations on the ELB here
+  ## [Optional] Add other annotations on the ELB here
   annotations: {}
-   
-  ##  Domain name will configure in Kafka's external listener
+  ##[Required] Domain name will be configured in Kafka's external listener
   ##
   domain: ""
-  ## If configured the bootstrap fqdn will be .bootstrapPrefix.domain ( dot's are not supported in the prefix)
+  ## [Optional] If configured the bootstrap fqdn will be .bootstrapPrefix.domain (dot's are not supported in the prefix)
   ## If not the bootstrapPrefix will be .name.domain
   bootstrapPrefix: ""
-  ## If not configured, the default value will be 'b' appended to the domain name as prefix ( dot's are not supoorted in the prefix)
+  ## [Optional] If not configured, the default value, 'b', will be appended to the domain name as prefix (dot's are not supoorted in the prefix)
   ##
   brokerPrefix: ""
+#### For nodePort based external access
+nodePort:
+  enabled: false
+  ## [Optional] Add annotations, any annotations provided here will be attached to all operator created nodeport services
+  annotations: {}
+  ## [Required] Host is used to configure Kafka's external listener
+  host: ""
+  ## [Required] PortOffset is used to manage nodePorts and the nodePorts should be ranging from 30000 to 32767.
+  portOffset: 30000
+#### For staticForHostBasedRouting(Ingress with SNI-routing) based external access
+staticForHostBasedRouting:
+  enabled: false
+  ## [Required] Domain name will be configured in Kafka's external listener
+  domain: ""
+  ## [Optional] If configured the bootstrap fqdn will be .bootstrapPrefix.domain (dot's are not supported in the prefix)
+  ## If not the bootstrapPrefix will be .name.domain
+  bootstrapPrefix: ""
+  ## [Optional] If not configured, the default value, 'b', will be appended to the domain name as prefix (dot's are not supoorted in the prefix)
+  brokerPrefix: ""
+  ## [Required] Port number is provided by user, by default for ingress is 443, but user can provide any other port.
+  port: 443
+#### For staticForPortBasedRouting(Ingress without SNI-routing) based external access
+## If using SNI-routing, kafka configurations require SSL.
+staticForPortBasedRouting:
+  enabled: false
+  ## [Required] Host is used to configure Kafka's external listener
+  host: ""
+  ## [Required] PortOffset is used to manager ports and should be >= 9093.
+  portOffset: 9093
 ## Enable Apache Kafka's external listener to run on TLS mode.
 ##
 tls:
@@ -117,6 +153,10 @@ tls:
     ## Customize SSL users name for tls mutual authentication for ACL configurations
     ##
     principalMappingRules: []
+  ## Enable internal listener to run on same TLS/Auth mode as the external listener
+  internalTLS: false
+  ## Enable inter-broker listener to run on same TLS/Auth mode as the external listener
+  interbrokerTLS: false
   ##
   ## JMX/Jolokia TLS
   ##
@@ -181,8 +221,47 @@ podAnnotations: {}
 #  list: "[{\"labels\": {\"key\": \"value\"}},{\"key1\": \"value1\"}]"
 
 ## Pod distribution on nodes with given key and values
-## The node Affinity configuration uses preferredDuringSchedulingIgnoredDuringExecution
 ## https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+## All forms of affinity default to use preferredDuringSchedulingIgnoredDuringExecution
+affinity:
+  nodeAffinity: {}
+  # nodeAffinity:
+  #   key: components
+  #   values:
+  #   - zookeeper
+  #   - app
+  #   rule: PREFERRED
+  podAffinity: {}
+  # podAffinity:
+  #   rule: PREFERRED
+  #   terms:
+  #   - key: kafka
+  #     values:
+  #     - zookeeper
+  #     - app
+  #     namespaces:
+  #     - ns1
+  #     topologyKey:
+  #       key: kubernetes.io/hostname (optional, kubernetes.io/hostname is the default if not key is provided)
+  #     weight:
+  #       weight: 100 (optional, valid 1-100)
+  podAntiAffinity: {}
+  # podAntiAffinity:
+  #   rule: PREFERRED
+  #   terms:
+  #   - key: kafka
+  #     values:
+  #     - zookeeper
+  #     - app
+  #     namespaces:
+  #     - ns1
+  #     topologyKey:
+  #       key: kubernetes.io/hostname (optional, kubernetes.io/hostname is the default if not key is provided)
+  #     weight:
+  #       weight: 100 (optional, valid 1-100)
+
+## Deprecation Warning! Please use affinity.nodeAffinity instead
+## The node Affinity configuration uses preferredDuringSchedulingIgnoredDuringExecution
 nodeAffinity : {}
 #nodeAffinity:
 #  key: components
@@ -190,19 +269,24 @@ nodeAffinity : {}
 #  - kafka
 #  - app
 
-## Pod Anti-Affinity 
-## It uses preferredDuringSchedulingIgnoredDuringExecution 
+## Deprecation Warning! Please use affinity.podAntiAffinity instead
+## Pod Anti-Affinity
+## It uses preferredDuringSchedulingIgnoredDuringExecution
 ## https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels
-## Use this capability, if the cluster has somekind of concept of racks
+## Use this capability, if the cluster has a concept of racks
 rack: {}
 #rack:
-# topology: failure-domain.beta.kubernetes.io/zone
+# topology: kubernetes.io/hostname
 
+## ensure kafka pods in this cluster are distributed across different kubernetes nodes
+oneReplicaPerNode: true
+
+## Deprecation Warning! Please use oneReplicaPerNode instead
 ## Disable HostPort
 ## This is a mechanism to isolate pod of same type running on the same node through port mapping on the host.
 ## If this feature is true, make sure to use nodeAffinity and rack to distribute pod across nodes.
 ## Take precaution before enabling it for the Kafka cluster
-disableHostPort: false
+disableHostPort: true
 ##
 ## Configure, if the Kafka requires to connect to specific zookeeper cluster running on different namespace or cluster.
 ## If not configured, Kafka cluster will do a self-discovery of zookeeper cluster in the same namespace.
@@ -212,3 +296,30 @@ disableHostPort: false
 ## In most scenario, this setting is not required.
 #zookeeper:
 #  endpoint: zookeeper:2181
+
+## https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets
+mountedSecrets: []
+#mountedSecrets:
+## [Required]
+# - secretRef: my-secret
+## [Optional]
+#   keyItems:
+#   // secret is stored under /mnt/secrets/my-secret/my-group/my-username file instead of /mnt/secrets/my-secret/username
+#   // if provided, only secret keys in items will be mounted. Otherwise, all keys will be mounted.
+## [Required]
+#   - key: username
+#     path: my-group/my-username
+
+## Configure service account for cluster
+## If left blank, will use default kubernetes serviceaccount
+serviceAccountName: ""
+
+## Confluent Telemetry
+## User can enable telemetry at either global or component level by setting telemetry.enabled=true and providing telemetry.secretRef=<k8s-secret-name>.
+## Kubernetes secret named secretRef must contain key "telemetry" with value (base64 encoded) apiKey: <ccloud-api-key>\n apiSecret: <ccloud-api-secret>\n
+## If proxy is set to true, then the "telemetry" key in secret specified by secretRef must additionally contain
+## (base64 encoded) proxyUrl: <proxyUrl>\n proxyUsername: <username>\n proxyPassword: <password>\n
+#telemetry:
+#  enabled: false
+#  secretRef: <k8s-secret-name>
+#  proxy: false

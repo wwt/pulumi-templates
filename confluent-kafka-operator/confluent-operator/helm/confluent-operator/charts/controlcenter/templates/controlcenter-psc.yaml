@@ -11,6 +11,7 @@
 {{- end }}
 {{- $helmManagedStorage := .Values.global.provider.storage }}
 {{- $storageClassName := .Values.storageClassName | default .Values.global.storageClassName }}
+{{- $_ := set $ "telemetrySupported" true }}
 
 apiVersion: operator.confluent.cloud/v1
 kind: PhysicalStatefulCluster
@@ -25,6 +26,7 @@ spec:
     {{- include "confluent-operator.hostPort" . }}
   cluster_id: {{ include "confluent-operator.cluster-id" . }}
   common:
+{{- include "confluent-operator.affinity" (dict "Values" .Values "isPSC" "true") | indent 4 }}
     config:
       pod:
       - config:
@@ -35,18 +37,19 @@ spec:
       shared:
       - name: control-center.properties
         value: |2
-          config.providers=file
-          config.providers.file.class=org.apache.kafka.common.config.provider.FileConfigProvider
           # control-center configuration
+{{ include "confluent-operator.config-file-provider" . | indent 10 }}
           confluent.controlcenter.rest.authentication.skip.paths=/2.0/status/app_info
-          bootstrap.servers={{ .Values.dependencies.c3KafkaCluster.bootstrapEndpoint }}
+          {{- if  .Values.dependencies.c3KafkaCluster.zookeeper.endpoint }}
           zookeeper.connect={{ .Values.dependencies.c3KafkaCluster.zookeeper.endpoint }}
+          {{- end }}
           confluent.license=${file:/mnt/secrets/license.txt:license}
-{{ include "c3.monitoring-clusters" .  | indent 10 }}
+{{ include "c3.monitoring-clusters" . | indent 10 }}
 {{ include "confluent-operator.cp-mds-config" . | indent 10 }}
           confluent.controlcenter.data.dir=/mnt/data/data0
           confluent.controlcenter.name=_confluent-controlcenter
           confluent.controlcenter.disk.skew.warning.min.bytes=1073741824
+{{ include "confluent-operator.telemetry" . | indent 10 }}
 
       - name: monitoring-interceptor-topic.properties
         value: |2
@@ -97,12 +100,15 @@ spec:
           {{- else }}
           confluent.controlcenter.schema.registry.enable=false
           {{- end }}
+          {{- if .Values.global.authorization.rbac.enabled }}
+          {{- $_ := required "MDS endpoint required e.g http|s://<kafka_endpoint>" .Values.global.dependencies.mds.endpoint }}
+          confluent.controlcenter.streams.cprest.url={{ .Values.global.dependencies.mds.endpoint }}
+          {{- end }}
 
       - name: streams.properties
         value: |2
           # stream configuration
 {{ include "c3.stream-security-config" . | indent 10 }}
-
       - name: https.properties
         value: |2
           # https configuration
@@ -251,10 +257,10 @@ spec:
             {{- end }}
       - name: c3-kafka-client-jaas.conf
         value: |2
-        
-          {{- $_ := set $ "kafkaDependency" .Values.dependencies.c3KafkaCluster }}
+{{ include "confluent-operator.config-file-provider" . | indent 10 }}
+{{- $_ := set $ "kafkaDependency" .Values.dependencies.c3KafkaCluster }}
 {{ include "confluent-operator.kafka-client-security" . | indent 10 }}
-          {{- $_ := unset $ "kafkaDependency" }}
+{{- $_ := unset $ "kafkaDependency" }}
       {{- $_ := set $ "tlsEnable" .Values.tls.jmxTLS }}
       {{- $_ := set $ "authType" .Values.tls.authentication.type }}
 {{ include "confluent-operator.jolokia-security-configs" . | indent 6 }}
@@ -264,8 +270,6 @@ spec:
 
           -Xmx{{ $.Values.jvmConfig.heapSize }}
           -Xms{{ $.Values.jvmConfig.heapSize }}
-          -XX:+UnlockExperimentalVMOptions
-          -XX:+UseCGroupMemoryLimitForHeap
           -server
           -XX:+UseG1GC
           -XX:MaxGCPauseMillis=20
@@ -275,6 +279,8 @@ spec:
           -XX:MinMetaspaceFreeRatio=50
           -XX:MaxMetaspaceFreeRatio=80
           -Djava.awt.headless=true
+          -Djdk.tls.ephemeralDHKeySize=2048
+
           -XX:ParallelGCThreads=1
           -XX:ConcGCThreads=1
           -Dcom.sun.management.jmxremote=true
@@ -306,6 +312,10 @@ spec:
     {{- include "confluent-operator.psc-init-container" . | indent 4 }}
     container:
       image: {{ $.Values.image.repository -}}:{{- $.Values.image.tag }}
+      {{- include "confluent-operator.psc-mounted-secrets" . | indent 6 }}
+      {{- if .Values.serviceAccountName }}
+      service_account: {{ .Values.serviceAccountName }}
+      {{- end }}
       {{- if .Values.nodeAffinity }}
       node_affinity:
         key: {{ .Values.nodeAffinity.key }}

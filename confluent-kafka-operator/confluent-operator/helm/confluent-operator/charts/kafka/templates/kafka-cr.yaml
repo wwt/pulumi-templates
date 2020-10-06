@@ -6,7 +6,11 @@
 {{- fail "Only one between global.provider.storage and global.storageClassName can be set." }}
 {{- end }}
 {{- $storageClassName := .Values.storageClassName | default .Values.global.storageClassName }}
-
+{{- if and (not .Values.tls.enabled) (or .Values.tls.interbrokerTLS .Values.tls.internalTLS) }}
+{{- fail "tls must be enabled for interbrokerTLS and internalTLS to be enabled" }}
+{{- end }}
+{{- $affinityExists := or (or .Values.affinity.nodeAffinity .Values.affinity.podAffinity) .Values.affinity.podAntiAffinity }}
+{{- $_ := set $ "telemetrySupported" true }}
 
 apiVersion: cluster.confluent.com/v1alpha1
 kind: KafkaCluster
@@ -37,6 +41,7 @@ spec:
   {{- if .Values.global.provider.kubernetes.clusterDomain }}
   internalKubDomain: {{ .Values.global.provider.kubernetes.clusterDomain }}
   {{- end }}
+  {{- include "confluent-operator.cr-mounted-secrets" . | indent 2 }}
   {{- include "confluent-operator.cr-annotations" .  | indent 2 }}
   resources:
 {{- include "confluent-operator.resource-requirements" . | indent 4 }}
@@ -48,11 +53,15 @@ spec:
       storageClassName: {{ $storageClassName }}
       {{- end }}
     {{- end }}
-  {{- if or (or .Values.nodeAffinity .Values.rack) .Values.disableHostPort }}  
+  {{- if or (or (or (or .Values.nodeAffinity .Values.rack) .Values.disableHostPort) $affinityExists) .Values.oneReplicaPerNode }}
   placement:
-    {{- if .Values.disableHostPort }}
-    disableHostPort: true
+    {{- if .Values.oneReplicaPerNode }}
+    oneReplicaPerNode: {{ .Values.oneReplicaPerNode }}
     {{- end }}
+    {{- if .Values.disableHostPort }}
+    disableHostPort: {{ .Values.disableHostPort }}
+    {{- end }}
+{{- include "confluent-operator.affinity" (dict "Values" .Values "isPSC" "false") | indent 4 }}
     {{- if .Values.nodeAffinity }}
     nodeAffinity:
       key: {{ .Values.nodeAffinity.key }}
@@ -67,26 +76,11 @@ spec:
   {{- if .Values.metricReporter.enabled }}
   {{- include "kafka.confluent-metric-reporter" .  | indent 2 }}
   {{- end }}
-  {{- include "confluent-operator.cr-config-overrides" . | indent 2 }}
+  {{- include "kafka.config-overrides" . | indent 2 }}
+  {{- include "kafka.cr-external_access.network" .  | indent 2 }}
   {{- if .Values.zookeeper }}
   zookeeper:
     endpoint: {{ .Values.zookeeper.endpoint }}
-  {{- end }}
-  {{- if .Values.loadBalancer.enabled }}
-  {{- $_ := required "Configure domain name (DNS) to access Kafka outside kubernetes cluster" .Values.loadBalancer.domain }}
-  network:
-    domain: {{ .Values.loadBalancer.domain }}
-    type: {{ .Values.loadBalancer.type }}
-    {{- if .Values.loadBalancer.annotations }}
-    annotations: 
-{{ toYaml .Values.loadBalancer.annotations | trim | indent 6 }}
-    {{- end }}
-    {{- if .Values.loadBalancer.bootstrapPrefix }}
-    bootstrapPrefix: {{ .Values.loadBalancer.bootstrapPrefix }}
-    {{- end }}
-    {{- if .Values.loadBalancer.brokerPrefix }}
-    brokerPrefix: {{ .Values.loadBalancer.brokerPrefix }}
-    {{- end }}
   {{- end }}
   {{- if .Values.tls.enabled  }}
   tls:
@@ -94,6 +88,12 @@ spec:
     {{- if and .Values.tls.authentication (not (empty .Values.tls.authentication.type)) }}
     authentication:
       type: {{ .Values.tls.authentication.type }}
+    {{- end }}
+    {{- if  .Values.tls.interbrokerTLS }}
+    interbrokerTLS: {{ .Values.tls.interbrokerTLS }}
+    {{- end }}
+      {{- if  .Values.tls.internalTLS }}
+    internalTLS: {{ .Values.tls.internalTLS }}
     {{- end }}
     {{- if .Values.tls.authentication.principalMappingRules }}
     principalMappingRules:
@@ -123,16 +123,20 @@ spec:
     {{- if and .Values.tls.enabled (ne .Values.tls.authentication.type "plain") }}
     superUsers:
     - User:ANONYMOUS
+{{- if .Values.global.authorization.superUsers }}
 {{ toYaml .Values.global.authorization.superUsers | trim | indent 4 }}
+{{- end }}
     {{- else }}
     superUsers:
     - {{ printf "User:%s" .Values.global.sasl.plain.username }}
+{{- if .Values.global.authorization.superUsers }}
 {{ toYaml .Values.global.authorization.superUsers | trim | indent 4 }}
+{{- end }}
     {{- end }}
    {{- end }}
-{{- if (eq (len $.Values.global.provider.kubernetes.deployment.zones) 0) }}
-{{- fail "Provide atleast 1 zone information for .Values.global.provider.kubernetes.deployment.zones " }}
-{{- end }}
+  {{- if .Values.serviceAccountName }}
+  serviceAccountName: {{ .Values.serviceAccountName }}
+  {{- end }}
 {{- if and (not $storageClassName) .Values.global.provider.storage }}
   zones:
 {{ toYaml .Values.global.provider.kubernetes.deployment.zones | trim | indent 4 }}

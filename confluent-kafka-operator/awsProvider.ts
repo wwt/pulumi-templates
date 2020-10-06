@@ -5,9 +5,13 @@ const awsConfig = new pulumi.Config("aws");
 
 export function createConfig(zones: String[]) {
     return {
+        "serviceAccounts": {
+            "operator": {
+                "name": "cc-operator"
+            }
+        },
         "operator": {
-            "enabled": config.requireBoolean("enableOperator"),
-            "licenseKey": config.requireSecret("confluentLicenseKey")
+            "enabled": config.requireBoolean("enableOperator")
         },
         "global": {
             "provider": {
@@ -18,15 +22,6 @@ export function createConfig(zones: String[]) {
                         "zones": zones
                     }
                 },
-                "storage": {
-                    "provisioner": "kubernetes.io/aws-ebs",
-                    "reclaimPolicy": "Delete",
-                    "parameters": {
-                        "encrypted": "false",
-                        "kmsKeyId": "",
-                        "type": "gp2"
-                    }
-                },
                 "registry": {
                     "fqdn": "docker.io",
                     "credential": {
@@ -34,10 +29,31 @@ export function createConfig(zones: String[]) {
                     }
                 }
             },
+            "telemetry": {
+                "enabled": false,
+                "secretRef": "",
+                "proxy": false
+            },
+            "storageClassName": "",
             "sasl": {
                 "plain": {
                     "username": "test",
                     "password": "test123"
+                }
+            },
+            "authorization": {
+                "rbac": {
+                    "enabled": false
+                },
+                "simple": {
+                    "enabled": false
+                },
+                "superusers": []
+            },
+            "dependencies": {
+                "mds": {
+                    "endpoint": "",
+                    "publicKey": ""
                 }
             }
         },
@@ -54,14 +70,8 @@ export function createConfig(zones: String[]) {
         },
         "kafka": {
             "name": "kafka",
-            "replicas": 3,
             "enabled": config.requireBoolean("enableKafka"),
-            "resources": {
-                "requests": {
-                    "cpu": "200m",
-                    "memory": "1Gi"
-                }
-            },
+            "replicas": 3,
             "volume": {
                 "data0": config.require("kafkaData0Size")
             },
@@ -69,29 +79,19 @@ export function createConfig(zones: String[]) {
                 "enabled": false,
                 "domain": ""
             },
-            "tls": {
-                "enabled": false,
-                "fullchain": "",
-                "privkey": "",
-                "cacerts": ""
-            },
             "metricReporter": {
                 "enabled": true
+            },
+            "configOverrides": {
+                "server": [
+                    "confluent.balancer.enable=true"
+                ]
             }
         },
         "connect": {
             "name": "connectors",
             "replicas": 2,
             "enabled": config.requireBoolean("enableConnect"),
-            "tls": {
-                "enabled": false,
-                "authentication": {
-                    "type": ""
-                },
-                "fullchain": "",
-                "privkey": "",
-                "cacerts": ""
-            },
             "loadBalancer": {
                 "enabled": false,
                 "domain": ""
@@ -111,15 +111,6 @@ export function createConfig(zones: String[]) {
             "name": "replicator",
             "replicas": 2,
             "enabled": config.requireBoolean("enableReplicator"),
-            "tls": {
-                "enabled": false,
-                "authentication": {
-                    "type": ""
-                },
-                "fullchain": "",
-                "privkey": "",
-                "cacerts": ""
-            },
             "loadBalancer": {
                 "enabled": false,
                 "domain": ""
@@ -134,15 +125,6 @@ export function createConfig(zones: String[]) {
         "schemaregistry": {
             "name": "schemaregistry",
             "enabled": config.requireBoolean("enableSchemaRegistry"),
-            "tls": {
-                "enabled": false,
-                "authentication": {
-                    "type": ""
-                },
-                "fullchain": "",
-                "privkey": "",
-                "cacerts": ""
-            },
             "loadBalancer": {
                 "enabled": false,
                 "domain": ""
@@ -158,15 +140,6 @@ export function createConfig(zones: String[]) {
             "name": "ksql",
             "replicas": 2,
             "enabled": config.requireBoolean("enableKsql"),
-            "tls": {
-                "enabled": false,
-                "authentication": {
-                    "type": ""
-                },
-                "fullchain": "",
-                "privkey": "",
-                "cacerts": ""
-            },
             "loadBalancer": {
                 "enabled": false,
                 "domain": ""
@@ -192,7 +165,6 @@ export function createConfig(zones: String[]) {
         "controlcenter": {
             "name": "controlcenter",
             "enabled": config.requireBoolean("enableControlCenter"),
-            "license": config.requireSecret("confluentLicenseKey"),
             "dependencies": {
                 "c3KafkaCluster": {
                     "brokerCount": 3,
@@ -217,15 +189,6 @@ export function createConfig(zones: String[]) {
             "loadBalancer": {
                 "enabled": false,
                 "domain": ""
-            },
-            "tls": {
-                "enabled": false,
-                "authentication": {
-                    "type": ""
-                },
-                "fullchain": "",
-                "privkey": "",
-                "cacerts": ""
             },
             "auth": {
                 "basic": {

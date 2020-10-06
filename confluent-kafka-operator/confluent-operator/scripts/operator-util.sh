@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 set -o pipefail
 set +o xtrace
@@ -204,13 +204,13 @@ function run_cp() {
   ## Zookeeper
   helm_args="--set zookeeper.enabled=true ${helm_common_args}"
   run_cmd "$(run_helm_command ${helm_file_path} "${release_prefix}-zk")" ${verbose}
-  sts_name=$(kubectl --context ${context} -n ${namespace} get zookeeper -l component=zookeeper -o jsonpath='{.items[*].metadata.name}')
+  sts_name=$(kubectl --context ${context} -n ${namespace} get zookeeperclusters.cluster.confluent.com -l component=zookeeper -o jsonpath='{.items[*].metadata.name}')
   wait_for_k8s_sts
 
   ## Kafka
   helm_args="--set kafka.enabled=true ${helm_common_args}"
   run_cmd "$(run_helm_command ${helm_file_path} "${release_prefix}-kafka")" ${verbose}
-  sts_name=$(kubectl --context ${context} -n ${namespace} get kafka -l component=kafka -o jsonpath='{.items[*].metadata.name}')
+  sts_name=$(kubectl --context ${context} -n ${namespace} get kafkaclusters.cluster.confluent.com -l component=kafka -o jsonpath='{.items[*].metadata.name}')
   wait_for_k8s_sts
 
   ## SchemaRegistry/connect/replicator/controlcenter/ksql
@@ -245,7 +245,7 @@ function cp_delete() {
      echo "Delete CP deployment:\n"
         local array=(${release_prefix}-sr-replicator-connect-c3 ${release_prefix}-kafka ${release_prefix}-zk ${release_prefix}-operator)
         for release in "${array[@]}"; do
-            if helm --kube-context ${context} ls | grep -qF "${release}"; then
+            if helm --kube-context ${context} --namespace ${namespace} ls | grep -qF "${release}"; then
               if [[ "${release}" = "${release_prefix}-operator" ]]; then
                 sleep 20s
                 run_cmd "kubectl delete pod --context ${context} -l clusterId=${namespace} -n ${namespace} --force --grace-period 0" ${verbose}
@@ -253,7 +253,7 @@ function cp_delete() {
               if [[ "${helm_version}" == "v2" ]]; then
                 run_cmd "helm --kube-context ${context} delete --purge ${release}" ${verbose}
               elif [[ "${helm_version}" == "v3" ]]; then
-                run_cmd "helm --kube-context ${context} uninstall ${release}" ${verbose}
+                run_cmd "helm --kube-context ${context} --namespace ${namespace} uninstall ${release}" ${verbose}
               fi
               sleep 10s
             else

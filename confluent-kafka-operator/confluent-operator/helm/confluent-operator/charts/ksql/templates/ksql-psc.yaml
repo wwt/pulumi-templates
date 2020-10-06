@@ -12,6 +12,8 @@
 {{- end }}
 {{- $helmManagedStorage := .Values.global.provider.storage }}
 {{- $storageClassName := .Values.storageClassName | default .Values.global.storageClassName }}
+{{- $_ := set $ "telemetrySupported" true }}
+
 apiVersion: operator.confluent.cloud/v1
 kind: PhysicalStatefulCluster
 metadata:
@@ -25,6 +27,7 @@ spec:
     {{- include "confluent-operator.hostPort" . }}
   cluster_id: {{ include "confluent-operator.cluster-id" . }}
   common:
+{{- include "confluent-operator.affinity" (dict "Values" .Values "isPSC" "true") | indent 4 }}
     config:
       pod:
       - config:
@@ -60,6 +63,8 @@ spec:
           service.name={{ $.Values.name }}
       - name: ksqldb-server.properties
         value: |2
+
+{{ include "confluent-operator.config-file-provider" . | indent 10 }}
           {{- if .Values.tls.enabled }}
           listeners=http://0.0.0.0:9088,https://0.0.0.0:8088
           {{- if eq $.Values.tls.authentication.type "tls" }}
@@ -78,10 +83,10 @@ spec:
           {{- end }}
 {{ include "confluent-operator.cp-mds-config" . | indent 10 }}
           {{- if .Values.global.authorization.rbac.enabled }}
-          config.providers=file
-          config.providers.file.class=org.apache.kafka.common.config.provider.FileConfigProvider
-          ksql.security.extension.class=io.confluent.ksql.security.KsqlConfluentSecurityExtension
           confluent.metadata.http.auth.credentials.provider=BASIC
+          ksql.security.extension.class=io.confluent.ksql.security.KsqlConfluentSecurityExtension
+          ksql.authentication.plugin.class=io.confluent.ksql.security.VertxBearerOrBasicAuthenticationPlugin
+          # Following fields are only used for CP <= 5.5 and will be ignored for CP 6.0
           rest.servlet.initializor.classes=io.confluent.common.security.jetty.initializer.InstallBearerOrBasicSecurityHandler
           websocket.servlet.initializor.classes=io.confluent.common.security.jetty.initializer.InstallBearerOrBasicSecurityHandler
           {{- end }}
@@ -96,19 +101,12 @@ spec:
           ksql.streams.producer.request.timeout.ms=300000
           ksql.streams.producer.max.block.ms=9223372036854775807
           ksql.streams.num.standby.replicas=1
-          {{- if .Values.basicAuth }}
-          ## basic auth configuration
-          authentication.method=BASIC
-          authentication.roles={{ .Values.basicAuth.role }}
-          authentication.realm={{ .Values.basicAuth.realm }}
-          authentication.skip.paths=/chc/*
-          java.security.auth.login.config=/mnt/config/shared/server_jaas.conf
-          {{- end }}
           {{- if .Values.dependencies.schemaRegistry.enabled }}
           {{- $_ := required "SchemaRegistry URL required" .Values.dependencies.schemaRegistry.url }}
           ## schemaregistry configuration
           ksql.schema.registry.url={{ $.Values.dependencies.schemaRegistry.url }}
           {{- if .Values.global.authorization.rbac.enabled }}
+          authentication.skip.paths=/chc/live,/chc/ready
           ksql.schema.registry.basic.auth.user.info=${file:/mnt/secrets/mds.txt:credential}
           {{- end }}
           {{- if .Values.dependencies.schemaRegistry.tls.enabled }}
@@ -131,19 +129,20 @@ spec:
           resource.extension.classes=io.confluent.cloud.ksql.rest.health.HealthCheckResourceExtension
           request.timeout.ms=20000
           retry.backoff.ms=500
+{{ include "confluent-operator.telemetry" . | indent 10 }}
       - name: admin.properties
-        value: |
-          {{- $_ := set $ "kafkaDependency" .Values.dependencies.kafka }}
+        value: |2
+
+{{ include "confluent-operator.config-file-provider" . | indent 10 }}
+{{- $_ := set $ "kafkaDependency" .Values.dependencies.kafka }}
 {{ include "confluent-operator.kafka-client-security" . | indent 10 }}
-      {{- $_ := set $ "tlsEnable" .Values.tls.jmxTLS }}
-      {{- $_ := set $ "authType" .Values.tls.jmxAuthentication.type }}
+{{- $_ := set $ "tlsEnable" .Values.tls.jmxTLS }}
+{{- $_ := set $ "authType" .Values.tls.jmxAuthentication.type }}
 {{ include "confluent-operator.jolokia-security-configs" . | indent 6 }}
       - name: jvm.config
         value: |2
           -Xmx {{- $.Values.jvmConfig.heapSize }}
           -Xms {{- $.Values.jvmConfig.heapSize }}
-          -XX:+UnlockExperimentalVMOptions
-          -XX:+UseCGroupMemoryLimitForHeap
           -server
           -XX:MetaspaceSize=96m
           -XX:+UseG1GC
@@ -154,6 +153,8 @@ spec:
           -XX:MinMetaspaceFreeRatio=50
           -XX:MaxMetaspaceFreeRatio=80
           -Djava.awt.headless=true
+          -Djdk.tls.ephemeralDHKeySize=2048
+
           -XX:ParallelGCThreads=1
           -XX:ConcGCThreads=1
           -Dcom.sun.management.jmxremote=true
@@ -174,24 +175,20 @@ spec:
     {{- include "confluent-operator.psc-init-container" . | indent 4 }}
     container:
       image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+      {{- include "confluent-operator.psc-mounted-secrets" . | indent 6 }}
+      {{- if .Values.serviceAccountName }}
+      service_account: {{ .Values.serviceAccountName }}
+      {{- end }}
       termination_grace_period_seconds: {{ $.Values.terminationGracePeriodSeconds | default 60}}
       liveness_probe:
         http:
-          {{- if .Values.global.authorization.rbac.enabled }}
-          path: /v1/metadata/id
-          {{- else }}
           path: /chc/live
-          {{- end }}
           port: 9088
         initial_delay_seconds: 30
         timeout_seconds: 10
       readiness_probe:
         http:
-          {{- if .Values.global.authorization.rbac.enabled }}
-          path: /v1/metadata/id
-          {{- else }}
           path: /chc/ready
-          {{- end }}
           port: 9088
         initial_delay_seconds: 30
         timeout_seconds: 10
@@ -215,6 +212,9 @@ spec:
         protocol: TCP
       - name: internal
         port: 9088
+        protocol: TCP
+      - name: peer
+        port: 9199
         protocol: TCP
       - name: jmx
         port: 7203

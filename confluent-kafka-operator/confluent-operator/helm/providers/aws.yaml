@@ -4,14 +4,6 @@ global:
   provider:
     name: aws
     region: us-west-2
-    kubernetes:
-       deployment:
-         ## If kubernetes is deployed in multi zone mode then specify availability-zones as appropriate
-         ## If kubernetes is deployed in single availability zone then specify appropriate values
-         zones:
-          - us-west-2a
-          - us-west-2b
-          - us-west-2c
     ## Docker registry endpoint where Confluent Images are available.
     ##
     registry:

@@ -43,6 +43,15 @@ global:
   ## If storageClassName is left blank ("") and global.provider.storage is not empty, storage classes will be created
   ## and used, one per availability zone.
   storageClassName: ""
+  ## Confluent Telemetry
+  ## User can enable telemetry at either global or component level by setting telemetry.enabled=true and providing telemetry.secretRef=<k8s-secret-name>.
+  ## Kubernetes secret named secretRef must contain key "telemetry" with value (base64 encoded) apiKey: <ccloud-api-key>\n apiSecret: <ccloud-api-secret>\n
+  ## If proxy is set to true, then the "telemetry" key in secret specified by secretRef must additionally contain
+  ## (base64 encoded) proxyUrl: <proxyUrl>\n proxyUsername: <username>\n proxyPassword: <password>\n
+  telemetry:
+    enabled: false
+    secretRef: ""
+    proxy: false
   ## All containers to run as non root with specific UID/GUID
   ## For OpenShift enable randomUID to true. If randomUID is false, then you must use right UID/GUID and configure confluent-scc.yaml accordingly.
   ## The scripts can be found at scripts/openshift/confluent-scc.yaml
@@ -73,7 +82,7 @@ global:
   initContainer:
     image:
       repository: confluentinc/cp-init-container-operator
-      tag: 5.5.0.0
+      tag: 6.0.0.0
   ##
   ## Authorization configuration
   ##

@@ -6,6 +6,8 @@
 {{- fail "Only one between global.provider.storage and global.storageClassName can be set." }}
 {{- end }}
 {{- $storageClassName := .Values.storageClassName | default .Values.global.storageClassName }}
+{{- $affinityExists := or (or .Values.affinity.nodeAffinity .Values.affinity.podAffinity) .Values.affinity.podAntiAffinity }}
+{{- $_ := set $ "telemetrySupported" false }}
 
 apiVersion: cluster.confluent.com/v1alpha1
 kind: ZookeeperCluster
@@ -27,6 +29,7 @@ spec:
   {{- if .Values.global.provider.kubernetes.clusterDomain }}
   internalKubDomain: {{ .Values.global.provider.kubernetes.clusterDomain }}
   {{- end }}
+  {{- include "confluent-operator.cr-mounted-secrets" . | indent 2 }}
   {{- include "confluent-operator.cr-annotations" .  | indent 2 }}
   resources:
 {{- include "confluent-operator.resource-requirements" . | indent 4 }}
@@ -38,11 +41,15 @@ spec:
       storageClassName: {{ $storageClassName }}
       {{- end }}
     {{- end }}
-  {{- if or (or .Values.nodeAffinity .Values.rack) .Values.disableHostPort }}
+  {{- if or (or (or (or .Values.nodeAffinity .Values.rack) .Values.disableHostPort) $affinityExists) .Values.oneReplicaPerNode }}
   placement:
+    {{- if .Values.oneReplicaPerNode }}
+    oneReplicaPerNode: {{ .Values.oneReplicaPerNode }}
+    {{- end }}
     {{- if .Values.disableHostPort }}
     disableHostPort: {{ .Values.disableHostPort }}
     {{- end }}
+{{- include "confluent-operator.affinity" (dict "Values" .Values "isPSC" "false") | indent 4 }}
     {{- if .Values.nodeAffinity }}
     nodeAffinity:
       key: {{ .Values.nodeAffinity.key }}
@@ -54,10 +61,6 @@ spec:
       topology: {{ .Values.rack.topology }}
     {{- end }}
   {{- end }}
-{{- if (eq (len $.Values.global.provider.kubernetes.deployment.zones) 0) }}
-{{- fail "Provide atleast 1 zone information for .Values.global.provider.kubernetes.deployment.zones " }}
-{{- end }}
-
   {{- if .Values.tls.jmxTLS }}
   {{- $_ := required "Fullchain PEM cannot be empty" .Values.tls.fullchain }}
   {{- $_ := required "Private key pem cannot be empty." .Values.tls.privkey }}
@@ -67,6 +70,9 @@ spec:
     jmxAuthentication:
       type: {{ .Values.tls.jmxAuthentication.type }}
     {{- end }}
+  {{- end }}
+  {{- if .Values.serviceAccountName }}
+  serviceAccountName: {{ .Values.serviceAccountName }}
   {{- end }}
 {{- if and (not $storageClassName) .Values.global.provider.storage }}
   zones:

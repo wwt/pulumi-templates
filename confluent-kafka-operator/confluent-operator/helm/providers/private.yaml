@@ -6,13 +6,6 @@ global:
     ## if any name which indicates regions
     ##
     region: anyregion
-    kubernetes:
-       deployment:
-         ## If kubernetes is deployed in multi zone mode then specify availability-zones as appropriate
-         ## If kubernetes is deployed in single availability zone then specify appropriate values
-         ## For the private cloud, use kubernetes node labels as appropriate
-         zones:
-          - myzones
     ##
     ## Docker registry endpoint where Confluent Images are available.
     ##

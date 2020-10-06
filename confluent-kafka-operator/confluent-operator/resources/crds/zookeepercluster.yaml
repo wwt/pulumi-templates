@@ -90,8 +90,152 @@ spec:
               required:
               - heapSize
               type: object
+            mountedSecrets:
+              items:
+                properties:
+                  keyItems:
+                    description: 'Cannot have ''items'' field in CRD: https://github.com/kubernetes/kubernetes/issues/68466'
+                    items:
+                      properties:
+                        key:
+                          minLength: 1
+                          type: string
+                        path:
+                          minLength: 1
+                          type: string
+                      required:
+                      - key
+                      - path
+                      type: object
+                    type: array
+                  secretRef:
+                    minLength: 1
+                    type: string
+                required:
+                - secretRef
+                type: object
+              type: array
             placement:
               properties:
+                affinity:
+                  properties:
+                    nodeAffinity:
+                      properties:
+                        key:
+                          maxLength: 64
+                          minLength: 1
+                          type: string
+                        rule:
+                          enum:
+                          - PREFERRED
+                          - REQUIRED
+                          type: string
+                        values:
+                          items:
+                            type: string
+                          minItems: 1
+                          type: array
+                      required:
+                      - key
+                      - values
+                      type: object
+                    podAffinity:
+                      properties:
+                        rule:
+                          enum:
+                          - PREFERRED
+                          - REQUIRED
+                          type: string
+                        terms:
+                          items:
+                            properties:
+                              key:
+                                maxLength: 64
+                                minLength: 1
+                                type: string
+                              namespaces:
+                                items:
+                                  type: string
+                                type: array
+                              topologyKey:
+                                properties:
+                                  key:
+                                    type: string
+                                required:
+                                - key
+                                type: object
+                              values:
+                                items:
+                                  type: string
+                                minItems: 1
+                                type: array
+                              weight:
+                                properties:
+                                  weight:
+                                    format: int32
+                                    maximum: 100
+                                    minimum: 1
+                                    type: integer
+                                required:
+                                - weight
+                                type: object
+                            required:
+                            - key
+                            - values
+                            type: object
+                          type: array
+                      required:
+                      - terms
+                      type: object
+                    podAntiAffinity:
+                      properties:
+                        rule:
+                          enum:
+                          - PREFERRED
+                          - REQUIRED
+                          type: string
+                        terms:
+                          items:
+                            properties:
+                              key:
+                                maxLength: 64
+                                minLength: 1
+                                type: string
+                              namespaces:
+                                items:
+                                  type: string
+                                type: array
+                              topologyKey:
+                                properties:
+                                  key:
+                                    type: string
+                                required:
+                                - key
+                                type: object
+                              values:
+                                items:
+                                  type: string
+                                minItems: 1
+                                type: array
+                              weight:
+                                properties:
+                                  weight:
+                                    format: int32
+                                    maximum: 100
+                                    minimum: 1
+                                    type: integer
+                                required:
+                                - weight
+                                type: object
+                            required:
+                            - key
+                            - values
+                            type: object
+                          type: array
+                      required:
+                      - terms
+                      type: object
+                  type: object
                 disableHostPort:
                   type: boolean
                 nodeAffinity:
@@ -100,16 +244,22 @@ spec:
                       maxLength: 64
                       minLength: 1
                       type: string
+                    rule:
+                      enum:
+                      - PREFERRED
+                      - REQUIRED
+                      type: string
                     values:
                       items:
                         type: string
-                      maxItems: 20
                       minItems: 1
                       type: array
                   required:
                   - key
                   - values
                   type: object
+                oneReplicaPerNode:
+                  type: boolean
                 rack:
                   properties:
                     topology:
@@ -222,6 +372,8 @@ spec:
               - requests
               - storage
               type: object
+            serviceAccountName:
+              type: string
             terminationGracePeriodInSecond:
               format: int64
               minimum: 30

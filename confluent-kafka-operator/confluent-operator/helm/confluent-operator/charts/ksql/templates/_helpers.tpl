@@ -8,10 +8,6 @@ Kafka client configuration; individual brokers are required for KSQL
 bootstrap.servers.admin={{ .Values.dependencies.kafka.bootstrapEndpoint }}
 bootstrap.servers={{ printf "%s:9073" $endpoint }}
 {{ include "confluent-operator.rbac-sasl-oauth-config" . | trim }}
-{{- if and (not .Values.tls.enabled) .Values.dependencies.kafka.tls.enabled }}
-ssl.truststore.location=/tmp/truststore.jks
-ssl.truststore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
-{{- end }}
 {{- else }}
 bootstrap.servers={{ .Values.dependencies.kafka.brokerEndpoints }}
 {{- include "confluent-operator.kafka-client-security" . }}

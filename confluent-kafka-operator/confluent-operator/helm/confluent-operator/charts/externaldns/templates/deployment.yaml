@@ -1,6 +1,6 @@
 {{- $_ := required "Namespace is required" .Release.Namespace }}
 {{- $_ := required "Name of externaldns is required." $.Values.name }}
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   {{- include "confluent-operator.labels" . }}
@@ -9,6 +9,9 @@ metadata:
 spec:
   strategy:
     type: Recreate
+  selector:
+    matchLabels:
+      app: external-dns
   template:
     metadata:
       labels:

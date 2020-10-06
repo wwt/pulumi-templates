@@ -219,12 +219,10 @@ Configure Kafka client security configurations
 */}}
 {{- define "confluent-operator.kafka-client-security" }}
 {{- $protocol :=  (include "confluent-operator.kafka-external-advertise-protocol" .) | trim  }}
-{{ printf "config.providers=file" }}
-{{ printf "config.providers.file.class=org.apache.kafka.common.config.provider.FileConfigProvider" }}
 {{- if contains "SASL" $protocol }}
 {{ printf "security.protocol=%s" $protocol }} 
 {{ printf "sasl.mechanism=PLAIN" }}
-{{ printf "sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";" .Values.global.sasl.plain.username .Values.global.sasl.plain.password }}
+{{ printf "sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${file:/mnt/secrets/global_sasl_plain_username:username}\" password=\"${file:/mnt/secrets/global_sasl_plain_password:password}\";" }}
 {{- else }}
 {{- if contains "2WAYSSL" $protocol }}
 {{ printf "security.protocol=%s" "SSL" }}
@@ -244,12 +242,28 @@ Configure Kafka client security configurations
 {{- end }}
 
 {{/*
+Configure Kafka client security configurations
+*/}}
+{{- define "confluent-operator.global-sasl-secret" }}
+global_sasl_plain_username: {{ (printf "username=%s" .Values.global.sasl.plain.username) | b64enc }}
+global_sasl_plain_password: {{ (printf "password=%s" .Values.global.sasl.plain.password) | b64enc }}
+{{- end }}
+
+{{/*
 Configure Producer Configurations
 */}}
 {{- define "confluent-operator.producer-security-config" }}
+{{- if .Values.global.authorization.rbac.enabled }}
+{{- range $key, $val := splitList "\n" (include "confluent-operator.rbac-sasl-oauth-config" .)  }}
+{{- if not (empty $val) }}
+{{ printf "producer.%s" $val }}
+{{- end }}
+{{- end }}
+{{- else }}
 {{- range $key, $val := splitList "\n" (include "confluent-operator.kafka-client-security" .)  }}
 {{- if not (empty $val) }}
 {{ printf "producer.%s" $val }} 
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -259,9 +273,17 @@ Configure Producer Configurations
 Configure Consumer Configurations
 */}}
 {{- define "confluent-operator.consumer-security-config" }}
+{{- if .Values.global.authorization.rbac.enabled }}
+{{- range $key, $val := splitList "\n" (include "confluent-operator.rbac-sasl-oauth-config" .)  }}
+{{- if not (empty $val) }}
+{{ printf "consumer.%s" $val }}
+{{- end }}
+{{- end }}
+{{- else }}
 {{- range $key, $val := splitList "\n" (include "confluent-operator.kafka-client-security" .) }}
 {{- if not (empty $val) }}
 {{ printf "consumer.%s" $val }} 
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -271,9 +293,17 @@ Producer Monitoring Interceptor Configurations
 */}}
 {{- define "confluent-operator.producer-interceptor-security-config" }}
 {{ print "producer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor" }}
+{{- if .Values.global.authorization.rbac.enabled }}
+{{- range $key, $val := splitList "\n" (include "confluent-operator.rbac-sasl-oauth-config" .)  }}
+{{- if not (empty $val) }}
+{{ printf "producer.confluent.monitoring.interceptor.%s" $val }}
+{{- end }}
+{{- end }}
+{{- else }}
 {{- range $key, $val := splitList "\n" (include "confluent-operator.kafka-client-security" .)  }}
 {{- if not (empty $val) }}
 {{ printf "producer.confluent.monitoring.interceptor.%s" $val }} 
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -283,9 +313,17 @@ Consumer Monitoring Interceptor Configurations
 */}}
 {{- define "confluent-operator.consumer-interceptor-security-config" }}
 {{ print "consumer.interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor" }}
+{{- if .Values.global.authorization.rbac.enabled }}
+{{- range $key, $val := splitList "\n" (include "confluent-operator.rbac-sasl-oauth-config" .)  }}
+{{- if not (empty $val) }}
+{{ printf "consumer.confluent.monitoring.interceptor.%s" $val }}
+{{- end }}
+{{- end }}
+{{- else }}
 {{- range $key, $val := splitList "\n" (include "confluent-operator.kafka-client-security" .)  }}
 {{- if not (empty $val) }}
 {{ printf "consumer.confluent.monitoring.interceptor.%s" $val }} 
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -362,7 +400,7 @@ pod_security_context:
 
 {{/*
 */}}
-{{- define "confluent-operator.cr-config-overrides"}}
+{{- define "confluent-operator.cr-config-overrides" }}
 {{- if or .Values.configOverrides.server .Values.configOverrides.jvm .Values.configOverrides.log4j }}
 configOverrides:
 {{- if .Values.configOverrides.server }}
@@ -376,6 +414,24 @@ configOverrides:
 {{- if .Values.configOverrides.log4j }}
   log4j:
 {{ toYaml .Values.configOverrides.log4j | trim | indent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+*/}}
+{{- define "confluent-operator.telemetry" }}
+{{- $telemetry := .Values.telemetry | default .Values.global.telemetry }}
+{{- if and .telemetrySupported $telemetry.enabled }}
+metric.reporters=io.confluent.telemetry.reporter.TelemetryReporter
+confluent.telemetry.enabled=true
+confluent.telemetry.api.key=${file:/mnt/secrets/{{ $telemetry.secretRef }}/telemetry:apiKey}
+confluent.telemetry.api.secret=${file:/mnt/secrets/{{ $telemetry.secretRef }}/telemetry:apiSecret}
+confluent.telemetry.labels.confluent.operator.version=0.419.0
+{{- if $telemetry.proxy }}
+confluent.telemetry.proxy.url=${file:/mnt/secrets/{{ $telemetry.secretRef }}/telemetry:proxyUrl}
+confluent.telemetry.proxy.username=${file:/mnt/secrets/{{ $telemetry.secretRef }}/telemetry:proxyUsername}
+confluent.telemetry.proxy.password=${file:/mnt/secrets/{{ $telemetry.secretRef }}/telemetry:proxyPassword}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -497,7 +553,11 @@ local k8sClusterDomain = {{ $domainName | quote }};
   '{{ .Chart.Name }}.properties': {
       'rest.advertised.host.name': componentEndpoint(componentName, podNamespace, podName, k8sClusterDomain),
       'rest.advertised.host.port': "8083",
+      {{- if and .Values.tls.enabled .Values.tls.internalTLS }}
+      'rest.advertised.listener': "https",
+      {{- else }}
       'rest.advertised.listener': "http",
+      {{- end }}
     },
 {{- end }}
 {{- if eq .Chart.Name "schemaregistry"  }}
@@ -615,6 +675,13 @@ JMX security configurations
 {{- end }}
 
 {{/*
+Properties config file provider
+*/}}
+{{- define "confluent-operator.config-file-provider"}}
+{{ printf "config.providers=file" }}
+{{ printf "config.providers.file.class=org.apache.kafka.common.config.provider.FileConfigProvider" }}
+{{- end }}
+{{/*
 Confluent cert validation
 */}}
 {{- define "confluent-operator.cert-required" }}
@@ -632,7 +699,9 @@ Confluent mds credential
 {{- if .Values.global.authorization.rbac.enabled }}
 {{- $_ := required "MDS username required" .Values.dependencies.mds.authentication.username }}
 {{- $_ := required "MDS password required" .Values.dependencies.mds.authentication.password }}
-mds.txt: {{ (printf "credential=%s:%s" .Values.dependencies.mds.authentication.username .Values.dependencies.mds.authentication.password) | b64enc }}
+{{- $mdsUserName := $.Values.dependencies.mds.authentication.username }}
+{{- $mdsPassword := $.Values.dependencies.mds.authentication.password }}
+mds.txt: {{ (printf "credential=%s:%s\nusername=%s\npassword=%s" $mdsUserName $mdsPassword $mdsUserName $mdsPassword) | b64enc }}
 {{- end }}
 {{- end }}
 
@@ -667,16 +736,143 @@ mdsPublicKey.pem: {{ .Values.global.dependencies.mds.publicKey | b64enc }}
 {{- $_ := required "MDS username required" .Values.dependencies.mds.authentication.username }}
 {{- $_ := required "MDS password required" .Values.dependencies.mds.authentication.password }}
 {{- $mdsEndpoint := $.Values.global.dependencies.mds.endpoint }}
-{{- $mdsUserName := $.Values.dependencies.mds.authentication.username }}
-{{- $mdsPassword := $.Values.dependencies.mds.authentication.password }}
 {{ $kafka := $.kafkaDependency }}
 {{- $class := "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule" }}
-{{ printf "sasl.jaas.config=%s required metadataServerUrls=\"%s\" username=\"%s\" password=\"%s\";" $class $mdsEndpoint $mdsUserName $mdsPassword }}
+{{ printf "sasl.jaas.config=%s required metadataServerUrls=\"%s\" username=\"${file:/mnt/secrets/mds.txt:username}\" password=\"${file:/mnt/secrets/mds.txt:password}\";" $class $mdsEndpoint}}
 sasl.login.callback.handler.class=io.confluent.kafka.clients.plugins.auth.token.TokenUserLoginCallbackHandler
 sasl.mechanism=OAUTHBEARER
 {{- if $kafka.tls.enabled  }}
 security.protocol=SASL_SSL
+{{- if .Values.tls.cacerts }}
+ssl.truststore.location=/tmp/truststore.jks
+ssl.truststore.password=${file:/mnt/secrets/jksPassword.txt:jksPassword}
+{{- end }}
 {{- else }}
 security.protocol=SASL_PLAINTEXT
+{{- end }}
+{{- end }}
+
+
+{{/*
+Confluent PSC Node Affinity Rules
+---------------------------------
+PSC Node Affinity Rule uses integer rules instead of string hence we must convert the user input
+*/}}
+{{- define "confluent-operator.psc-node-affinity" }}
+{{- if eq (.rule | default "PREFERRED") "REQUIRED" }}
+rule: 1
+{{- else }}
+rule: 0
+{{- end }}
+key: {{ toYaml .key | trim }}
+values:
+{{ toYaml .values | trim }}
+{{- end }}
+
+{{/*
+Confluent PSC Pod [Anti]Affinity Rules
+--------------------------------------
+PSC Pod [Anti]Affinity Rule uses integer rules instead of string hence we must convert the user input
+*/}}
+{{- define "confluent-operator.psc-pod-affinity" }}
+{{- if eq (.rule | default "PREFERRED") "REQUIRED" }}
+rule: 1
+{{- else }}
+rule: 0
+{{- end }}
+terms:
+{{ toYaml .terms | trim }}
+{{- end }}
+
+{{/*
+Confluent Component Affinity Rules
+*/}}
+{{- define "confluent-operator.affinity" }}
+{{- if or (or .Values.affinity.nodeAffinity .Values.affinity.podAffinity) .Values.affinity.podAntiAffinity }}
+affinity:
+{{- if .Values.affinity.nodeAffinity }}
+{{- if .Values.nodeAffinity }}
+{{- fail "Only one between .Values.affinity.nodeAffinity and .Values.nodeAffinity can be set." }}
+{{- end }}
+{{- if eq .isPSC "true" }}
+  node_affinity:
+{{- include "confluent-operator.psc-node-affinity" .Values.affinity.nodeAffinity | indent 4 }}
+{{- else }}
+  nodeAffinity:
+{{ toYaml .Values.affinity.nodeAffinity | trim | indent 4 }}
+{{- end }}
+{{- end }}
+{{- if .Values.affinity.podAffinity }}
+{{- if eq .isPSC "true" }}
+  pod_affinity:
+{{- include "confluent-operator.psc-pod-affinity" .Values.affinity.podAffinity | indent 4 }}
+{{- else }}
+  podAffinity:
+{{ toYaml .Values.affinity.podAffinity | trim | indent 4 }}
+{{- end }}
+{{- end }}
+{{- if .Values.affinity.podAntiAffinity }}
+{{- if .Values.rack }}
+{{- fail "Only one between .Values.affinity.podAntiAffinity and .Values.rack can be set." }}
+{{- end }}
+{{- if eq .isPSC "true" }}
+  pod_anti_affinity:
+{{- include "confluent-operator.psc-pod-affinity" .Values.affinity.podAntiAffinity | indent 4 }}
+{{- else }}
+  podAntiAffinity:
+{{ toYaml .Values.affinity.podAntiAffinity | trim | indent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Confluent Component Deprecated Features In-Use List
+*/}}
+{{- define "confluent-operator.deprecated-list" }}
+{{- if .nodeAffinity }}
+- [WARNING]: .Values.nodeAffinity is deprecated. We recommend using .Values.affinity.nodeAffinity instead.
+{{- end }}
+{{- if .rack }}
+- [WARNING]: .Values.rack is deprecated. We recommend using .Values.affinity.podAntiAffinity instead.
+{{- end }}
+{{- if not .disableHostPort }}
+- [WARNING]: .Values.disableHostPort is deprecated. We recommend using .Values.oneReplicaPerNode instead.
+{{- end }}
+{{- end }}
+
+{{/*
+CR Mounted Secrets List
+*/}}
+{{- define "confluent-operator.cr-mounted-secrets" }}
+{{- $telemetry := .Values.telemetry | default .Values.global.telemetry }}
+{{- if or .Values.mountedSecrets (and .telemetrySupported $telemetry.enabled) }}
+mountedSecrets:
+{{- if .Values.mountedSecrets }}
+{{ toYaml .Values.mountedSecrets | trim }}
+{{- end }}
+{{- if and .telemetrySupported $telemetry.enabled }}
+- secretRef: {{ $telemetry.secretRef }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+PSC Mounted Secrets List
+*/}}
+{{- define "confluent-operator.psc-mounted-secrets" }}
+{{- $telemetry := .Values.telemetry | default .Values.global.telemetry }}
+{{- if or .Values.mountedSecrets (and .telemetrySupported $telemetry.enabled) }}
+mounted_secrets:
+{{- range $i, $secret := .Values.mountedSecrets }}
+- secret_ref: {{ $secret.secretRef }}
+{{- if $secret.keyItems }}
+  key_items:
+{{ toYaml $secret.keyItems | trim | indent 2 }}
+{{- end }}
+{{- end }}
+{{- if and .telemetrySupported $telemetry.enabled }}
+- secret_ref: {{ $telemetry.secretRef }}
+{{- end }}
 {{- end }}
 {{- end }}

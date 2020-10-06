@@ -55,6 +55,7 @@ spec:
         - --prefixed-secrets
         - --disable-hostpath
         - --enable-logical-cluster-secrets=false
+        - --enable-kafka-roll-controller=true
         {{- if .Values.metrics.dataDog.enabled }}
         - --enable-data-dog-exporter
         - --datadog-agent-port={{ .Values.metrics.dataDog.port }}
