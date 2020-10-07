@@ -25,8 +25,8 @@ template:
     numOfAvailZones:
       description: The number of availability zones for the VPC
       default: 3
-    ownerTag:
-      description: Owner tag to be applied to all created resources. Should be your name or team name
     vpcName:
       description: Name for the vpc
       default: kafka-vpc
+    ownerTag:
+      description: Owner tag to be applied to all created resources. Should be your name or team name

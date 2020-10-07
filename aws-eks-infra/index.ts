@@ -34,15 +34,9 @@ const cluster = new eks.Cluster("kafka-cluster", {
     tags: baseTags
 });
 
-// Create a bucket to sink all of our messages to
-const kafkaBucket = new aws.s3.Bucket("stream-demo-kafka-bucket", {
-    forceDestroy: true,
-    tags: baseTags
-});
+// export kubeconfig
+export const kubeconfig = cluster.kubeconfig;
 
-export const bucketName = kafkaBucket.bucket
-// export const storageClassName = helper.getStorageClass(cluster);
-export const kubeconfig = cluster.kubeconfig; // create a stack export for kubeconfig
 // Export the vpc zones for use in the confluent operator aws provider config
 export const vpcZones = vpc.privateSubnetIds.then(subnetIds =>
     subnetIds.map(id => id.apply(
