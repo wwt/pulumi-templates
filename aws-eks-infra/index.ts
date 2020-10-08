@@ -9,7 +9,6 @@ const instanceType = config.require("instanceType") as aws.ec2.InstanceType;
 const desiredCapacity: number = config.requireNumber("desiredCapacity");
 const minSize: number = config.requireNumber("minSize");
 const maxSize: number = config.requireNumber("maxSize");
-const deployDashboard: boolean = config.requireBoolean("deployDashboard");
 const numberOfAvailZones: number = config.requireNumber("numOfAvailZones");
 
 const baseTags = {
@@ -30,7 +29,6 @@ const cluster = new eks.Cluster("kafka-cluster", {
     desiredCapacity: desiredCapacity,
     minSize: minSize,
     maxSize: maxSize,
-    deployDashboard: deployDashboard,
     tags: baseTags
 });
 
