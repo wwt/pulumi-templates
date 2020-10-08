@@ -5,11 +5,6 @@ import * as eks from "@pulumi/eks";
 
 // Get configuration for the stack
 const config = new pulumi.Config();
-const instanceType = config.require("instanceType") as aws.ec2.InstanceType;
-const desiredCapacity: number = config.requireNumber("desiredCapacity");
-const minSize: number = config.requireNumber("minSize");
-const maxSize: number = config.requireNumber("maxSize");
-const numberOfAvailZones: number = config.requireNumber("numOfAvailZones");
 
 const baseTags = {
     Owner: config.require("ownerTag")
@@ -17,7 +12,7 @@ const baseTags = {
 
 // Create a VPC for the cluster.
 const vpc = new awsx.ec2.Vpc("kafka-vpc", {
-    numberOfAvailabilityZones: numberOfAvailZones,
+    numberOfAvailabilityZones: config.requireNumber("numOfAvailZones"),
     tags: {
         ...baseTags,
         Name: "kafka-vpc"
@@ -28,10 +23,10 @@ const vpc = new awsx.ec2.Vpc("kafka-vpc", {
 const cluster = new eks.Cluster("kafka-cluster", {
     vpcId: vpc.id,
     subnetIds: vpc.privateSubnetIds,
-    instanceType: instanceType,
-    desiredCapacity: desiredCapacity,
-    minSize: minSize,
-    maxSize: maxSize,
+    instanceType: config.require("instanceType") as aws.ec2.InstanceType,
+    desiredCapacity: config.requireNumber("desiredCapacity"),
+    minSize: config.requireNumber("minSize"),
+    maxSize: config.requireNumber("maxSize"),
     tags: baseTags
 });
 
