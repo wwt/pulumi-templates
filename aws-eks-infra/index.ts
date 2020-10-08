@@ -15,10 +15,13 @@ const baseTags = {
     Owner: config.require("ownerTag")
 };
 
-// Create a VPC for our cluster.
+// Create a VPC for the cluster.
 const vpc = new awsx.ec2.Vpc("kafka-vpc", {
     numberOfAvailabilityZones: numberOfAvailZones,
-    tags: Object.assign(baseTags, {Name: "kafka-vpc"})
+    tags: {
+        ...baseTags,
+        Name: "kafka-vpc"
+    }
 });
 
 // Create an EKS cluster with the given configuration.
@@ -32,7 +35,7 @@ const cluster = new eks.Cluster("kafka-cluster", {
     tags: baseTags
 });
 
-// export kubeconfig
+// Export kubeconfig
 export const kubeconfig = cluster.kubeconfig;
 
 // Export the vpc zones for use in the confluent operator aws provider config
