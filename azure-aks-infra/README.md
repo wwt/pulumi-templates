@@ -1,1 +1,0 @@
-# azure-aks-infra
