@@ -11,7 +11,7 @@ export function createConfig(zones: String[]) {
             }
         },
         "operator": {
-            "enabled": config.requireBoolean("enableOperator")
+            "enabled": true
         },
         "global": {
             "provider": {

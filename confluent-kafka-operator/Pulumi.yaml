@@ -19,9 +19,6 @@ template:
     enableKsql:
       description: Enable the ksql component
       default: false
-    enableOperator:
-      description: Enable the operator component
-      default: true
     enableReplicator:
       description: Enable the replicator component
       default: false
