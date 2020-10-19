@@ -22,6 +22,9 @@ template:
     numOfAvailZones:
       description: The number of availability zones for the VPC
       default: 3
+    eksClusterName:
+      description: Name for the eks cluster
+      default: kafka-cluster
     vpcName:
       description: Name for the vpc
       default: kafka-vpc
